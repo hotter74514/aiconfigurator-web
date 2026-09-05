@@ -9,7 +9,7 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 
 ## P1 — Architecture and core execution
 
-- [ ] **TASK-010** — Accept execution-model and concurrency ADRs
+- [ ] **TASK-010** — Accept execution-model and concurrency ADRs *(ADR-001 accepted; ADR-005 pending approval)*
 - [ ] **TASK-011** — Accept async API ADR
 - [ ] **TASK-012** — Accept CLI-subprocess integration ADR
 - [ ] **TASK-013** — Implement `POST /api/runs`
