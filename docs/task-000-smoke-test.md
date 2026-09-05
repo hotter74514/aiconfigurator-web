@@ -102,7 +102,7 @@ artifacts/Qwen/Qwen3-32B-FP8_h200_sxm_trtllm_isl4000_osl1000_ttft2000_tpot30_718
     └── top1/ ... top4/  # each: 11 files; prefill/decode config, K8s YAML, and shell runners
 ```
 
-File types observed: 4 CSV, 46 YAML, 40 shell scripts, 4 JSON, and 1 PNG. TASK-001 remains separate; this report records the smoke-test artifact boundary without implementing parsing or ranking.
+File types observed: 4 CSV, 46 YAML, 40 shell scripts, 4 JSON, and 1 PNG. The observed CLI and artifact contract is documented in [TASK-001](task-001-cli-artifacts.md); parser and ranking implementation remain later tasks.
 
 ## Reproduction
 

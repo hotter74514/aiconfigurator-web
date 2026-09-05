@@ -32,6 +32,8 @@ docs:
 	@test -d prompts
 	@test -f .codex/config.toml
 	@test -f docs/assignment-brief.md
+	@test -f docs/task-000-smoke-test.md
+	@test -f docs/task-001-cli-artifacts.md
 	@test -f docs/DESIGN_DECISIONS.md
 	@test -f docs/demo-checklist.md
 	@test -f docs/decisions/001-execution-model.md
