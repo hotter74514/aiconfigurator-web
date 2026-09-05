@@ -41,6 +41,26 @@ def test_post_runs_returns_queued_run_and_stores_constraints() -> None:
     assert stored.request.tpot == 30
 
 
+def test_post_runs_returns_503_after_shutdown() -> None:
+    service = RunManager(start_workers=False)
+    service.shutdown()
+    client = TestClient(create_app(service))
+
+    response = client.post(
+        "/api/runs",
+        json={
+            "model": "Qwen/Qwen3-32B-FP8",
+            "system": "h200_sxm",
+            "total_gpus": 32,
+            "ttft": 2000,
+            "tpot": 30,
+        },
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Run manager is shutting down"}
+
+
 def test_post_runs_rejects_missing_constraints() -> None:
     client, service = make_client()
 

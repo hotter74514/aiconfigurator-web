@@ -32,4 +32,4 @@ The focused suite covers command construction, successful completion, non-zero e
 
 ## Deferred Work
 
-Timeout/cancellation, structured logs, metrics, and production container packaging remain in later tasks. The worker currently has no timeout so cancellation policy is not silently chosen ahead of TASK-031.
+Structured logs, metrics, and production container packaging remain in later tasks. TASK-031 now applies a configurable timeout and shutdown cancellation to the real CLI adapter.
