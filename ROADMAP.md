@@ -24,7 +24,8 @@ The roadmap follows assignment risk, not feature breadth. Do not begin Bonus wor
 
 - [ ] Add bounded queue/backpressure and subprocess timeout/cleanup
 - [ ] Add distinct liveness/readiness probes
-- [ ] Add structured logs and focused metrics
+- [ ] Add structured logs
+- [x] Add focused OpenTelemetry metrics and traces
 - [ ] Test failure modes and CPU contention assumptions
 
 ## P4 — Container and Kubernetes

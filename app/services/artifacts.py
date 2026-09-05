@@ -121,6 +121,17 @@ class ArtifactStore:
             allowed.append(relative.as_posix())
         return sorted(allowed)
 
+    def total_allowed_bytes(self, run_id: UUID) -> int:
+        """Return the size of all allow-listed files in a run directory."""
+
+        total = 0
+        for name in self.list_allowed(run_id):
+            try:
+                total += self.resolve_allowed(run_id, name).stat().st_size
+            except OSError:
+                continue
+        return total
+
     def resolve_allowed(self, run_id: UUID, name: str) -> Path:
         relative = self._parse_relative_name(name)
         run_dir = self.run_dir(run_id)
