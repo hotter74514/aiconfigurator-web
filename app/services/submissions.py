@@ -1,10 +1,15 @@
 from collections.abc import Callable
+import os
+from pathlib import Path
 from queue import Empty, Full, Queue
 from threading import Event, Lock, Thread
 from uuid import UUID
 
+from app.domain.results import RankedResults
 from app.domain.runs import RunRequest, RunStatus, StoredRun, new_stored_run
+from app.services.artifacts import ArtifactStore
 from app.services.executor import ExecutionResult, run_aiconfigurator
+from app.services.results import parse_result_directory
 
 
 class RunNotFoundError(LookupError):
@@ -19,7 +24,7 @@ class QueueCapacityError(RuntimeError):
     """Raised when the bounded pending queue has no remaining capacity."""
 
 
-Runner = Callable[[RunRequest], ExecutionResult]
+Runner = Callable[[RunRequest, Path], ExecutionResult]
 
 
 class RunManager:
@@ -32,6 +37,7 @@ class RunManager:
         worker_count: int = 1,
         queue_size: int = 10,
         start_workers: bool = True,
+        artifact_root: Path | str | None = None,
     ) -> None:
         if worker_count not in (1, 2):
             raise ValueError("worker_count must be 1 or 2")
@@ -42,6 +48,11 @@ class RunManager:
         self._runs: dict[UUID, StoredRun] = {}
         self._queue: Queue[UUID] = Queue(maxsize=queue_size)
         self._runner = runner
+        configured_root = artifact_root or os.getenv(
+            "AICONFIGURATOR_ARTIFACT_ROOT", ".tmp/runs"
+        )
+        self._artifacts = ArtifactStore(configured_root)
+        self._artifacts.cleanup_expired()
         self._stop = Event()
         self._workers: list[Thread] = []
 
@@ -58,9 +69,11 @@ class RunManager:
     def submit(self, request: RunRequest) -> StoredRun:
         run = new_stored_run(request)
         with self._lock:
+            self._artifacts.prepare_run(run.id)
             try:
                 self._queue.put_nowait(run.id)
             except Full as exc:
+                self._artifacts.remove_run(run.id)
                 raise QueueCapacityError("Run queue is full") from exc
             self._runs[run.id] = run
         return run
@@ -80,6 +93,8 @@ class RunManager:
         *,
         error: str | None = None,
         execution: ExecutionResult | None = None,
+        results: RankedResults | None = None,
+        artifacts: list[str] | None = None,
     ) -> StoredRun:
         with self._lock:
             current = self._runs.get(run_id)
@@ -108,6 +123,10 @@ class RunManager:
                         "duration_ms": execution.duration_ms,
                     }
                 )
+            if results is not None:
+                updates["results"] = results
+            if artifacts is not None:
+                updates["artifacts"] = artifacts
             updated = current.model_copy(update=updates)
             self._runs[run_id] = updated
             return updated
@@ -120,8 +139,16 @@ class RunManager:
         run_id: UUID,
         *,
         execution: ExecutionResult | None = None,
+        results: RankedResults | None = None,
+        artifacts: list[str] | None = None,
     ) -> StoredRun:
-        return self.transition(run_id, "completed", execution=execution)
+        return self.transition(
+            run_id,
+            "completed",
+            execution=execution,
+            results=results,
+            artifacts=artifacts,
+        )
 
     def mark_failed(
         self,
@@ -137,6 +164,15 @@ class RunManager:
         for worker in self._workers:
             worker.join(timeout=1)
 
+    def artifact_dir(self, run_id: UUID) -> Path:
+        return self._artifacts.run_dir(run_id)
+
+    def artifact_path(self, run_id: UUID, name: str) -> Path:
+        run = self.get(run_id)
+        if run is None or run.status != "completed" or name not in run.artifacts:
+            raise RunNotFoundError(str(run_id))
+        return self._artifacts.resolve_allowed(run_id, name)
+
     def _worker_loop(self) -> None:
         while not self._stop.is_set():
             try:
@@ -149,9 +185,21 @@ class RunManager:
                 if run is None:
                     continue
                 self.mark_running(run_id)
-                execution = self._runner(run.request)
+                artifact_dir = self._artifacts.run_dir(run_id)
+                execution = self._runner(run.request, artifact_dir)
                 if execution.exit_code == 0:
-                    self.mark_completed(run_id, execution=execution)
+                    result_root = self._artifacts.find_result_root(run_id)
+                    results = parse_result_directory(
+                        result_root,
+                        ttft_target_ms=run.request.ttft,
+                        tpot_target_ms=run.request.tpot,
+                    )
+                    self.mark_completed(
+                        run_id,
+                        execution=execution,
+                        results=results,
+                        artifacts=self._artifacts.list_allowed(run_id),
+                    )
                 elif execution.exit_code is None:
                     self.mark_failed(
                         run_id,

@@ -16,7 +16,7 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 - [x] **TASK-014** — Implement `GET /api/runs/{id}` and status transitions
 - [x] **TASK-015** — Implement bounded worker execution and failure capture *(see [worker report](docs/task-015-worker.md))*
 - [x] **TASK-016** — Parse and rank AIConfigurator results *(see [results report](docs/task-016-results.md))*
-- [ ] **TASK-017** — Implement artifact allow-list and download
+- [x] **TASK-017** — Implement artifact allow-list and download *(see [artifact report](docs/task-017-artifacts.md))
 
 ## P2 — Minimal user experience
 

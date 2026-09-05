@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import subprocess
 import time
+from pathlib import Path
 
 from app.domain.runs import RunRequest
 
@@ -13,10 +14,12 @@ class ExecutionResult:
     duration_ms: int
 
 
-def build_aiconfigurator_command(request: RunRequest) -> list[str]:
+def build_aiconfigurator_command(
+    request: RunRequest, save_dir: Path | None = None
+) -> list[str]:
     """Build the external command without invoking it."""
 
-    return [
+    command = [
         "aiconfigurator",
         "cli",
         "default",
@@ -31,15 +34,20 @@ def build_aiconfigurator_command(request: RunRequest) -> list[str]:
         "--tpot",
         str(request.tpot),
     ]
+    if save_dir is not None:
+        command.extend(("--save-dir", str(save_dir)))
+    return command
 
 
-def run_aiconfigurator(request: RunRequest) -> ExecutionResult:
+def run_aiconfigurator(
+    request: RunRequest, save_dir: Path | None = None
+) -> ExecutionResult:
     """Execute AIConfigurator and capture its process result."""
 
     started_at = time.monotonic()
     try:
         completed = subprocess.run(
-            build_aiconfigurator_command(request),
+            build_aiconfigurator_command(request, save_dir),
             capture_output=True,
             text=True,
             check=False,
