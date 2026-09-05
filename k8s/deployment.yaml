@@ -36,6 +36,10 @@ spec:
               value: /app/data/runs
             - name: OTEL_SERVICE_NAME
               value: aiconfigurator-portal
+            - name: OTEL_TRACES_EXPORTER
+              value: otlp
+            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+              value: http://otel-collector.observability.svc.cluster.local:4318/v1/traces
           volumeMounts:
             - name: run-artifacts
               mountPath: /app/data/runs

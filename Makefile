@@ -6,7 +6,7 @@ AICONFIGURATOR_MODEL ?= Qwen/Qwen3-32B-FP8
 AICONFIGURATOR_GPUS ?= 32
 AICONFIGURATOR_SYSTEM ?= h200_sxm
 
-.PHONY: help status docs check smoke-configurator docker-build container-check k8s-render dev build format lint typecheck test ci
+.PHONY: help status docs check smoke-configurator docker-build minikube-load-image container-check k8s-render dev build format lint typecheck test ci
 
 PORTAL_IMAGE ?= aiconfigurator-portal:local
 PORTAL_PLATFORM ?= linux/amd64
@@ -17,6 +17,7 @@ help:
 	@echo "  make check     Validate project guidance and configured app checks"
 	@echo "  make smoke-configurator  Run the Linux/amd64 AIConfigurator smoke test"
 	@echo "  make docker-build       Build the Linux/amd64 portal image"
+	@echo "  make minikube-load-image Load the portal image into the Minikube profile"
 	@echo "  make container-check    Check portal probes and metrics in Docker"
 	@echo "  make k8s-render         Render local Kubernetes manifests"
 	@echo "  make dev       Start the configured development server"
@@ -83,7 +84,10 @@ smoke-configurator:
 	./scripts/smoke-test.sh
 
 docker-build:
-	docker build --platform $(PORTAL_PLATFORM) --target runtime --load -t $(PORTAL_IMAGE) .
+	docker build --platform $(PORTAL_PLATFORM) --provenance=false --sbom=false --target runtime --load -t $(PORTAL_IMAGE) .
+
+minikube-load-image: docker-build
+	./scripts/minikube-load-image.sh $(PORTAL_IMAGE)
 
 container-check: docker-build
 	PORTAL_IMAGE=$(PORTAL_IMAGE) PORTAL_PLATFORM=$(PORTAL_PLATFORM) ./scripts/container-check.sh

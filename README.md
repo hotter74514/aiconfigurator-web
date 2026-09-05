@@ -42,10 +42,10 @@ The runtime target listens on port `8000`, runs as the non-root `portal` user, a
 
 ## Local Kubernetes
 
-The local manifests are in [`k8s/`](k8s/). Build/load `aiconfigurator-portal:local` into the target cluster, verify that `kubectl config current-context` names that local cluster, then apply and port-forward:
+The local manifests are in [`k8s/`](k8s/). For the complete Minikube plus Prometheus, Tempo, OTel Collector Contrib, and Grafana setup, follow [`docs/local-observability.md`](docs/local-observability.md). The short portal-only path is:
 
 ```sh
-make docker-build
+make minikube-load-image
 kubectl kustomize k8s
 kubectl apply -k k8s
 kubectl rollout status deployment/aiconfigurator-portal
@@ -72,4 +72,4 @@ Document the execution model, asynchronous API, artifact lifecycle, concurrency,
 
 ## Known Limitations
 
-Kubernetes manifests are not implemented yet. The form is intentionally plain HTML/Jinja2 with a small inline submit/polling/result bridge and no frontend framework. There is no public per-run cancellation endpoint; shutdown cancellation is lifecycle protection only. Metrics, traces, and logs are process-local unless an OTLP backend or external log collector is configured; in-memory metric state resets on restart. Artifacts are ephemeral and are lost on process/pod restart; only explicit generated filenames are downloadable, and generated scripts are never executed by the portal. The Docker image pins the base image digest and direct AIConfigurator dependencies, but does not yet hash-lock every transitive Python dependency. Authentication, TLS, secrets management, and high availability are intentionally out of scope for the take-home; the eventual submission must state what would be added for production.
+The form is intentionally plain HTML/Jinja2 with a small inline submit/polling/result bridge and no frontend framework. There is no public per-run cancellation endpoint; shutdown cancellation is lifecycle protection only. Metrics, traces, and logs are process-local unless an OTLP backend or external log collector is configured; in-memory metric state resets on restart. The local Minikube observability stack uses ephemeral storage and is not production-ready. Artifacts are ephemeral and are lost on process/pod restart; only explicit generated filenames are downloadable, and generated scripts are never executed by the portal. The Docker image pins the base image digest and direct AIConfigurator dependencies, but does not yet hash-lock every transitive Python dependency. Authentication, TLS, secrets management, and high availability are intentionally out of scope for the take-home; the eventual submission must state what would be added for production.

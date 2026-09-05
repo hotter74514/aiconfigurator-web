@@ -15,6 +15,7 @@ This index tracks the decisions that must be defensible in the interview. The de
 | [009](decisions/009-multi-tenancy.md) | Result visibility and quotas | Proposed |
 | [010](decisions/010-output-trust.md) | Estimate warnings and validation | Proposed |
 | [011](decisions/011-timeout-cancellation.md) | Timeout, cancellation, and subprocess cleanup | Proposed |
+| [012](decisions/012-local-observability-stack.md) | Minikube local observability stack | Accepted |
 
 README summaries should link to the ADRs rather than duplicate them.
 
