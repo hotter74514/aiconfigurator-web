@@ -18,6 +18,8 @@
       button { background: #1459a6; border: 0; border-radius: .25rem; color: #fff; cursor: pointer; font: inherit; padding: .7rem 1rem; }
       button:disabled { cursor: wait; opacity: .7; }
       #submit-status { min-height: 1.5rem; }
+      #submit-status[data-state="error"] { color: #a12622; }
+      #submit-status[data-state="completed"] { color: #176b38; }
     </style>
   </head>
   <body>
@@ -49,16 +51,86 @@
     <script>
       const form = document.querySelector("#run-form");
       const status = document.querySelector("#submit-status");
+      const submitButton = form.querySelector("button");
+      const POLL_INTERVAL_MS = 2000;
+      let pollTimer = null;
+      let pollGeneration = 0;
+
+      function setStatus(message, state, busy) {
+        status.textContent = message;
+        status.dataset.state = state;
+        status.setAttribute("aria-busy", String(busy));
+      }
+
+      function cancelPolling() {
+        if (pollTimer !== null) {
+          window.clearTimeout(pollTimer);
+          pollTimer = null;
+        }
+        pollGeneration += 1;
+      }
+
+      async function pollRun(runId, generation) {
+        if (generation !== pollGeneration) {
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/runs/${encodeURIComponent(runId)}`);
+          let body;
+          try {
+            body = await response.json();
+          } catch {
+            throw new Error("The server returned an invalid status response.");
+          }
+          if (!response.ok) {
+            throw new Error(body.detail || "The run status could not be loaded.");
+          }
+          if (generation !== pollGeneration) {
+            return;
+          }
+
+          if (body.status === "queued" || body.status === "running") {
+            setStatus(`Run ${runId} is ${body.status}.`, "loading", true);
+            pollTimer = window.setTimeout(
+              () => pollRun(runId, generation),
+              POLL_INTERVAL_MS
+            );
+            return;
+          }
+          if (body.status === "completed") {
+            setStatus(`Run ${runId} completed. Results are ready.`, "completed", false);
+            submitButton.disabled = false;
+            return;
+          }
+          if (body.status === "failed") {
+            setStatus(
+              `Run ${runId} failed: ${body.error || "unknown error"}`,
+              "error",
+              false
+            );
+            submitButton.disabled = false;
+            return;
+          }
+          throw new Error("The run returned an unknown status.");
+        } catch (error) {
+          if (generation !== pollGeneration) {
+            return;
+          }
+          setStatus(error.message, "error", false);
+          submitButton.disabled = false;
+        }
+      }
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
-        const submitButton = form.querySelector("button");
+        cancelPolling();
         const values = Object.fromEntries(new FormData(form));
         values.total_gpus = Number(values.total_gpus);
         values.ttft = Number(values.ttft);
         values.tpot = Number(values.tpot);
         submitButton.disabled = true;
-        status.textContent = "Submitting run…";
+        setStatus("Submitting run…", "loading", true);
 
         try {
           const response = await fetch(form.dataset.endpoint, {
@@ -70,11 +142,12 @@
           if (!response.ok) {
             throw new Error(body.detail || "The run could not be submitted.");
           }
-          status.textContent = `Run ${body.id} is ${body.status}. Polling will be added next.`;
+          setStatus(`Run ${body.id} is ${body.status}.`, "loading", true);
+          const generation = pollGeneration;
+          pollRun(body.id, generation);
         } catch (error) {
-          status.textContent = error.message;
-        } finally {
           submitButton.disabled = false;
+          setStatus(error.message, "error", false);
         }
       });
     </script>

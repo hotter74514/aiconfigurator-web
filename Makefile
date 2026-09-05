@@ -39,6 +39,7 @@ docs:
 	@test -f docs/task-016-results.md
 	@test -f docs/task-017-artifacts.md
 	@test -f docs/task-020-form.md
+	@test -f docs/task-021-polling.md
 	@test -f templates/form.html
 	@test -f pyproject.toml
 	@test -f app/main.py
