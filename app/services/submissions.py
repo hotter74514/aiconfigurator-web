@@ -1,4 +1,5 @@
 from collections.abc import Callable
+import logging
 import os
 from pathlib import Path
 from queue import Empty, Full, Queue
@@ -16,6 +17,7 @@ from app.services.executor import (
     ExecutionResult,
     run_aiconfigurator,
 )
+from app.services.logging import bind_run_id, configure_logging, log_event
 from app.services.results import parse_result_directory
 from app.services.telemetry import PortalTelemetry, get_telemetry
 
@@ -37,6 +39,7 @@ class RunManagerUnavailableError(RuntimeError):
 
 
 Runner = Callable[[RunRequest, Path, Event], ExecutionResult]
+LOGGER = logging.getLogger("aiconfigurator.portal.runs")
 
 
 class RunManager:
@@ -51,6 +54,7 @@ class RunManager:
         start_workers: bool = True,
         artifact_root: Path | str | None = None,
     ) -> None:
+        configure_logging()
         if worker_count not in (1, 2):
             raise ValueError("worker_count must be 1 or 2")
         if queue_size < 1:
@@ -143,8 +147,22 @@ class RunManager:
                     capacity=self._queue.maxsize,
                     event_name="run.queued",
                 )
+                log_event(
+                    LOGGER,
+                    "run_queued",
+                    run_id=run.id,
+                    queue_depth=queue_depth,
+                    queue_capacity=self._queue.maxsize,
+                )
             return run
         except Exception as exc:
+            log_event(
+                LOGGER,
+                "run_rejected",
+                level=logging.WARNING,
+                run_id=run.id,
+                reason=type(exc).__name__,
+            )
             admission_span.record_exception(exc)
             admission_span.set_status(Status(StatusCode.ERROR, str(exc)))
             raise
@@ -311,11 +329,15 @@ class RunManager:
                     continue
                 run, cancel_event, run_context = self._begin_run(run_id)
                 artifact_dir = self._artifacts.run_dir(run_id)
-                context_token = otel_context.attach(run_context)
-                try:
-                    execution = self._runner(run.request, artifact_dir, cancel_event)
-                finally:
-                    otel_context.detach(context_token)
+                with bind_run_id(run.id):
+                    context_token = otel_context.attach(run_context)
+                    try:
+                        log_event(LOGGER, "run_started", run_id=run.id)
+                        execution = self._runner(
+                            run.request, artifact_dir, cancel_event
+                        )
+                    finally:
+                        otel_context.detach(context_token)
                 current = self.get(run_id)
                 if current is None or current.status != "running":
                     continue
@@ -439,24 +461,52 @@ class RunManager:
         with self._lock:
             run_span = self._run_spans.pop(run_id, None)
             queue_wait_span = self._queue_wait_spans.pop(run_id, None)
-            self._run_contexts.pop(run_id, None)
+            run_context = self._run_contexts.pop(run_id, None)
             active = run_id in self._telemetry_active_runs
             self._telemetry_active_runs.discard(run_id)
             run = self._runs.get(run_id)
 
         if queue_wait_span is not None:
             queue_wait_span.end()
-        if run_span is not None:
-            attributes: dict[str, str | int] = {"run.status": status}
-            if execution is not None:
-                attributes["run.duration_ms"] = execution.duration_ms
-            run_span.add_event("run.terminal", attributes=attributes)
-            run_span.set_attribute("run.status", status)
-            if status == "failed":
-                run_span.set_status(Status(StatusCode.ERROR, run.error if run else None))
+        context_token = (
+            otel_context.attach(run_context) if run_context is not None else None
+        )
+        try:
+            if run_span is not None:
+                attributes: dict[str, str | int] = {"run.status": status}
+                if execution is not None:
+                    attributes["run.duration_ms"] = execution.duration_ms
+                run_span.add_event("run.terminal", attributes=attributes)
+                run_span.set_attribute("run.status", status)
+                if status == "failed":
+                    run_span.set_status(
+                        Status(StatusCode.ERROR, run.error if run else None)
+                    )
+                else:
+                    run_span.set_status(Status(StatusCode.OK))
+                log_event(
+                    LOGGER,
+                    "run_terminal",
+                    level=logging.INFO if status == "completed" else logging.WARNING,
+                    run_id=run_id,
+                    status=status,
+                    duration_ms=execution.duration_ms if execution else None,
+                    error=run.error if run and status == "failed" else None,
+                )
+                run_span.end()
             else:
-                run_span.set_status(Status(StatusCode.OK))
-            run_span.end()
+                log_event(
+                    LOGGER,
+                    "run_terminal",
+                    level=logging.INFO if status == "completed" else logging.WARNING,
+                    run_id=run_id,
+                    status=status,
+                    duration_ms=execution.duration_ms if execution else None,
+                    error=run.error if run and status == "failed" else None,
+                )
+        finally:
+            if context_token is not None:
+                otel_context.detach(context_token)
 
         duration_ms = execution.duration_ms if execution is not None else None
         self._telemetry.record_terminal_run(

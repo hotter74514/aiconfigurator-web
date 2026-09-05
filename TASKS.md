@@ -30,7 +30,7 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 - [x] **TASK-031** — Add timeout, cancellation, subprocess cleanup, and regression tests *(see [timeout report](docs/task-031-timeout-cancellation.md))
 - [x] **TASK-032** — Implement distinct `/live` and `/ready` probes *(see [probe report](docs/task-032-probes.md))
 - [x] **TASK-033** — Add OpenTelemetry traces and focused metrics *(see [observability report](docs/task-033-observability.md))
-- [ ] **TASK-034** — Add structured logs with run correlation
+- [x] **TASK-034** — Add structured logs with run correlation *(see [logging report](docs/task-034-logging.md))
 
 ## P4 — Packaging and deployment
 
