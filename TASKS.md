@@ -4,7 +4,7 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 
 ## P0 — Feasibility
 
-- [ ] **TASK-000** — Dockerized AIConfigurator smoke test
+- [x] **TASK-000** — Dockerized AIConfigurator smoke test *(see [test report](docs/task-000-smoke-test.md))*
 - [ ] **TASK-001** — Understand CLI output and artifact directory structure
 
 ## P1 — Architecture and core execution
