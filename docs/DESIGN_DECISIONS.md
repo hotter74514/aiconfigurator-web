@@ -9,7 +9,7 @@ This index tracks the decisions that must be defensible in the interview. The de
 | [003](decisions/003-aiconfigurator-integration.md) | CLI subprocess boundary | Accepted |
 | [004](decisions/004-artifact-storage.md) | Ephemeral artifact lifecycle | Accepted |
 | [005](decisions/005-concurrency.md) | Queue and CPU contention | Accepted |
-| [006](decisions/006-probes.md) | Probe semantics and lifecycle | Proposed |
+| [006](decisions/006-probes.md) | Probe semantics and lifecycle | Accepted |
 | [007](decisions/007-observability.md) | Metrics and structured logs | Proposed |
 | [008](decisions/008-caching.md) | Determinism and caching | Proposed |
 | [009](decisions/009-multi-tenancy.md) | Result visibility and quotas | Proposed |

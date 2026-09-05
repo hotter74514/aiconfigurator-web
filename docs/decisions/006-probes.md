@@ -26,4 +26,4 @@ Use dependency-aware readiness only when the portal has durable external depende
 
 ## Status
 
-**Proposed — architecture owner approval required.**
+**Accepted — architecture owner approval recorded on 2026-09-05.**

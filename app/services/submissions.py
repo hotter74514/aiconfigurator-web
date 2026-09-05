@@ -98,6 +98,17 @@ class RunManager:
         with self._lock:
             return len(self._runs)
 
+    def readiness_error(self) -> str | None:
+        with self._lock:
+            if not self._accepting:
+                return "Run manager is shutting down"
+            workers = tuple(self._workers)
+        if not workers or not all(worker.is_alive() for worker in workers):
+            return "Worker initialization is incomplete"
+        if not self._artifacts.is_writable():
+            return "Artifact storage is not writable"
+        return None
+
     def transition(
         self,
         run_id: UUID,
