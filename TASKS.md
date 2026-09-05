@@ -13,7 +13,7 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 - [x] **TASK-011** — Accept async API ADR
 - [x] **TASK-012** — Accept CLI-subprocess integration ADR
 - [x] **TASK-013** — Implement `POST /api/runs`
-- [ ] **TASK-014** — Implement `GET /api/runs/{id}` and status transitions
+- [x] **TASK-014** — Implement `GET /api/runs/{id}` and status transitions
 - [ ] **TASK-015** — Implement bounded worker execution and failure capture
 - [ ] **TASK-016** — Parse and rank AIConfigurator results
 - [ ] **TASK-017** — Implement artifact allow-list and download

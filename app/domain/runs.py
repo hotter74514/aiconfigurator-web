@@ -24,12 +24,18 @@ class RunRequest(BaseModel):
         return value
 
 
-RunStatus = Literal["queued"]
+RunStatus = Literal["queued", "running", "completed", "failed"]
 
 
 class RunAcceptedResponse(BaseModel):
     id: UUID
+    status: Literal["queued"]
+
+
+class RunStatusResponse(BaseModel):
+    id: UUID
     status: RunStatus
+    error: str | None = None
 
 
 class StoredRun(BaseModel):
@@ -37,6 +43,7 @@ class StoredRun(BaseModel):
     request: RunRequest
     status: RunStatus
     created_at: datetime
+    error: str | None = None
 
 
 def new_stored_run(request: RunRequest) -> StoredRun:
