@@ -1,5 +1,6 @@
 SHELL := /bin/sh
 PACKAGE_MANAGER ?= npm
+PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 AICONFIGURATOR_IMAGE ?= aiconfigurator-web:local
 AICONFIGURATOR_MODEL ?= Qwen/Qwen3-32B-FP8
 AICONFIGURATOR_GPUS ?= 32
@@ -34,6 +35,9 @@ docs:
 	@test -f docs/assignment-brief.md
 	@test -f docs/task-000-smoke-test.md
 	@test -f docs/task-001-cli-artifacts.md
+	@test -f pyproject.toml
+	@test -f app/main.py
+	@test -f tests/test_runs_api.py
 	@test -f docs/DESIGN_DECISIONS.md
 	@test -f docs/demo-checklist.md
 	@test -f docs/decisions/001-execution-model.md
@@ -57,13 +61,20 @@ smoke-configurator:
 check: docs
 	@if test -f package.json; then \
 		$(MAKE) lint typecheck test; \
+	elif test -f pyproject.toml; then \
+		$(PYTHON) -m pytest; \
 	else \
-		echo "Scaffold checks passed; package.json is not configured yet."; \
+		echo "Scaffold checks passed; application package is not configured yet."; \
 	fi
 
 dev:
-	@test -f package.json || (echo "package.json is not configured yet; choose the application stack first."; exit 1)
-	$(PACKAGE_MANAGER) run dev
+	@if test -f package.json; then \
+		$(PACKAGE_MANAGER) run dev; \
+	elif test -f pyproject.toml; then \
+		$(PYTHON) -m uvicorn app.main:app --reload; \
+	else \
+		echo "Application package is not configured yet; choose the application stack first."; exit 1; \
+	fi
 
 build:
 	@test -f package.json || (echo "package.json is not configured yet; choose the application stack first."; exit 1)
@@ -82,8 +93,13 @@ typecheck:
 	$(PACKAGE_MANAGER) run typecheck
 
 test:
-	@test -f package.json || (echo "package.json is not configured yet; configure tests first."; exit 1)
-	$(PACKAGE_MANAGER) test
+	@if test -f package.json; then \
+		$(PACKAGE_MANAGER) test; \
+	elif test -f pyproject.toml; then \
+		$(PYTHON) -m pytest; \
+	else \
+		echo "Tests are not configured yet."; exit 1; \
+	fi
 
 ci: check
 	@if test -f package.json; then \

@@ -2,7 +2,7 @@
 
 ## Status
 
-This repository contains harness documentation and no application code yet. The following is the deliberately small candidate architecture for the assignment. Each material choice must be accepted in the corresponding ADR before implementation.
+The repository now contains the TASK-013 submission boundary; worker execution, result polling, parsing, and UI remain unimplemented. The following is the deliberately small candidate architecture for the assignment. Each material choice must be accepted in the corresponding ADR before implementation.
 
 ## Candidate Shape
 
