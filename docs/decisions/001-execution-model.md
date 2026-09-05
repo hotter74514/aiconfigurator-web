@@ -10,7 +10,7 @@ AIConfigurator sweeps are CPU-bound and may run for seconds or minutes. The port
 - Background thread/process pool: local and simple; a bounded process pool isolates CPU work.
 - Durable queue plus worker or Kubernetes Job per request: more resilient and scalable, but too much infrastructure for this scope.
 
-## Proposed Decision
+## Decision
 
 Use one web/API service with a bounded local process worker. Start with one or two workers and document that pod restart loses in-flight work.
 
@@ -24,4 +24,4 @@ Use a durable queue and worker deployment when runs must survive pod replacement
 
 ## Status
 
-**Proposed — architecture owner approval required.**
+**Accepted — architecture owner approval recorded on 2026-09-05.**

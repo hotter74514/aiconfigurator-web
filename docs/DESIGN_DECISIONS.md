@@ -4,7 +4,7 @@ This index tracks the decisions that must be defensible in the interview. The de
 
 | ADR | Topic | Status |
 |---|---|---|
-| [001](decisions/001-execution-model.md) | Bounded local execution | Proposed |
+| [001](decisions/001-execution-model.md) | Bounded local execution | Accepted |
 | [002](decisions/002-api-model.md) | Async job API and polling | Proposed |
 | [003](decisions/003-aiconfigurator-integration.md) | CLI subprocess boundary | Proposed |
 | [004](decisions/004-artifact-storage.md) | Ephemeral artifact lifecycle | Proposed |
