@@ -46,13 +46,11 @@ docs:
 	@test -f docs/decisions/010-output-trust.md
 
 smoke-configurator:
-	@test -f Dockerfile || (echo "Dockerfile is not configured yet; complete TASK-000 first."; exit 1)
-	docker build --platform linux/amd64 -t $(AICONFIGURATOR_IMAGE) .
-	docker run --rm --platform linux/amd64 $(AICONFIGURATOR_IMAGE) \
-		aiconfigurator cli default \
-		--model $(AICONFIGURATOR_MODEL) \
-		--total-gpus $(AICONFIGURATOR_GPUS) \
-		--system $(AICONFIGURATOR_SYSTEM)
+	AICONFIGURATOR_IMAGE=$(AICONFIGURATOR_IMAGE) \
+	AICONFIGURATOR_MODEL=$(AICONFIGURATOR_MODEL) \
+	AICONFIGURATOR_GPUS=$(AICONFIGURATOR_GPUS) \
+	AICONFIGURATOR_SYSTEM=$(AICONFIGURATOR_SYSTEM) \
+	./scripts/smoke-test.sh
 
 check: docs
 	@if test -f package.json; then \
