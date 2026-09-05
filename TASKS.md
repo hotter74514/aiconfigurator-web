@@ -22,7 +22,7 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 
 - [x] **TASK-020** — Build the plain HTML/Jinja2 form *(see [form report](docs/task-020-form.md))
 - [x] **TASK-021** — Poll run status and render loading/error states *(see [polling report](docs/task-021-polling.md))
-- [ ] **TASK-022** — Render ranked results and estimate warning
+- [x] **TASK-022** — Render ranked results and estimate warning *(see [results report](docs/task-022-results.md))
 
 ## P3 — Operations and failure modes
 

@@ -22,7 +22,7 @@ def test_index_renders_plain_jinja_form() -> None:
     assert "predictions must be validated" in response.text
 
 
-def test_index_defers_result_rendering_but_contains_status_polling() -> None:
+def test_index_contains_status_polling_and_result_rendering() -> None:
     client = TestClient(create_app(RunManager(start_workers=False)))
 
     response = client.get("/")
@@ -30,4 +30,8 @@ def test_index_defers_result_rendering_but_contains_status_polling() -> None:
     assert "POLL_INTERVAL_MS = 2000" in response.text
     assert "setTimeout" in response.text
     assert "GET /api/runs/" not in response.text
-    assert "ranked-results" not in response.text
+    assert 'id="results-panel"' in response.text
+    assert 'id="results-body"' in response.text
+    assert 'id="artifact-list"' in response.text
+    assert "renderResults" in response.text
+    assert "Estimate warning" in response.text
