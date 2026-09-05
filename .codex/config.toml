@@ -6,3 +6,9 @@ sandbox_mode = "workspace-write"
 
 [sandbox_workspace_write]
 network_access = true
+
+# Browser automation for local UI smoke tests and demo verification.
+# npx downloads the latest Playwright MCP package on first use.
+[mcp_servers.playwright]
+command = "npx"
+args = ["-y", "@playwright/mcp@latest"]
