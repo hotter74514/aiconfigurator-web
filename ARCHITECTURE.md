@@ -2,7 +2,7 @@
 
 ## Status
 
-The repository now contains the TASK-013/014 API boundary, TASK-015 bounded worker execution, TASK-016 structured-result parser/ranker, TASK-017 ephemeral artifact serving, the TASK-020 plain HTML/Jinja2 form, and TASK-021 status polling; ranked-result presentation and operational endpoints remain unimplemented. The following is the deliberately small candidate architecture for the assignment. Each material choice must be accepted in the corresponding ADR before implementation.
+The repository now contains the TASK-013/014 API boundary, TASK-015 bounded worker execution, TASK-016 structured-result parser/ranker, TASK-017 ephemeral artifact serving, the TASK-020 plain HTML/Jinja2 form, TASK-021 status polling, and TASK-022 ranked-result/artifact presentation; operational endpoints remain unimplemented. The following is the deliberately small candidate architecture for the assignment. Each material choice must be accepted in the corresponding ADR before implementation.
 
 ## Candidate Shape
 

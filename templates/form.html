@@ -8,7 +8,7 @@
     <style>
       :root { color-scheme: light; font-family: system-ui, sans-serif; }
       body { background: #f4f6f8; color: #18212b; margin: 0; }
-      main { background: #fff; margin: 4rem auto; max-width: 42rem; padding: 2rem; }
+      main { background: #fff; margin: 4rem auto; max-width: 58rem; padding: 2rem; }
       h1 { margin-top: 0; }
       .lede, .warning { line-height: 1.5; }
       .warning { background: #fff4d6; border-left: 4px solid #d28a00; padding: .75rem 1rem; }
@@ -20,6 +20,15 @@
       #submit-status { min-height: 1.5rem; }
       #submit-status[data-state="error"] { color: #a12622; }
       #submit-status[data-state="completed"] { color: #176b38; }
+      #results-panel { border-top: 1px solid #d5dce2; margin-top: 2rem; padding-top: 1.5rem; }
+      .table-wrap { overflow-x: auto; }
+      table { border-collapse: collapse; min-width: 54rem; width: 100%; }
+      th, td { border-bottom: 1px solid #d5dce2; padding: .6rem; text-align: left; white-space: nowrap; }
+      th { background: #eef2f5; }
+      .sla-pass { color: #176b38; font-weight: 600; }
+      .sla-fail { color: #a12622; font-weight: 600; }
+      .artifact-list { line-height: 1.8; margin-bottom: 0; }
+      .visually-hidden { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
     </style>
   </head>
   <body>
@@ -47,11 +56,41 @@
         <button type="submit">Submit configuration run</button>
         <p id="submit-status" role="status" aria-live="polite"></p>
       </form>
+      <section id="results-panel" hidden aria-labelledby="results-heading">
+        <h2 id="results-heading">Ranked configurations</h2>
+        <p class="warning"><strong>Estimate warning:</strong> predictions must be validated with representative real benchmarks before deployment.</p>
+        <div class="table-wrap">
+          <table id="results-table">
+            <caption class="visually-hidden">AIConfigurator ranked serving configuration estimates</caption>
+            <thead>
+              <tr>
+                <th scope="col">Rank</th>
+                <th scope="col">Mode</th>
+                <th scope="col">Backend / system</th>
+                <th scope="col">GPUs</th>
+                <th scope="col">Throughput (tokens/s)</th>
+                <th scope="col">Request latency (ms)</th>
+                <th scope="col">TTFT (ms)</th>
+                <th scope="col">TPOT (ms)</th>
+                <th scope="col">SLA</th>
+              </tr>
+            </thead>
+            <tbody id="results-body"></tbody>
+          </table>
+        </div>
+        <div id="artifacts-panel">
+          <h3>Deployment artifacts</h3>
+          <ul id="artifact-list" class="artifact-list"></ul>
+        </div>
+      </section>
     </main>
     <script>
       const form = document.querySelector("#run-form");
       const status = document.querySelector("#submit-status");
       const submitButton = form.querySelector("button");
+      const resultsPanel = document.querySelector("#results-panel");
+      const resultsBody = document.querySelector("#results-body");
+      const artifactList = document.querySelector("#artifact-list");
       const POLL_INTERVAL_MS = 2000;
       let pollTimer = null;
       let pollGeneration = 0;
@@ -68,6 +107,72 @@
           pollTimer = null;
         }
         pollGeneration += 1;
+      }
+
+      function appendCell(row, value) {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.append(cell);
+        return cell;
+      }
+
+      function formatMetric(value) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) {
+          return "—";
+        }
+        return number.toLocaleString(undefined, { maximumFractionDigits: 2 });
+      }
+
+      function artifactHref(runId, artifact) {
+        if (
+          typeof artifact !== "string" ||
+          artifact.length === 0 ||
+          artifact.split("/").some((part) => !part || part === "." || part === "..")
+        ) {
+          throw new Error("The run returned an invalid artifact name.");
+        }
+        const encodedPath = artifact.split("/").map(encodeURIComponent).join("/");
+        return `/api/runs/${encodeURIComponent(runId)}/artifacts/${encodedPath}`;
+      }
+
+      function renderResults(runId, results, artifacts) {
+        if (!results || !Array.isArray(results.candidates) || results.candidates.length === 0) {
+          throw new Error("The run returned no ranked configurations.");
+        }
+
+        resultsBody.replaceChildren();
+        for (const candidate of results.candidates) {
+          const row = document.createElement("tr");
+          appendCell(row, String(candidate.rank));
+          appendCell(row, candidate.mode);
+          appendCell(row, `${candidate.backend} / ${candidate.system}`);
+          appendCell(row, String(candidate.total_gpus));
+          appendCell(row, formatMetric(candidate.predicted_tokens_per_second));
+          appendCell(row, formatMetric(candidate.predicted_request_latency_ms));
+          appendCell(row, formatMetric(candidate.predicted_ttft_ms));
+          appendCell(row, formatMetric(candidate.predicted_tpot_ms));
+          const slaCell = appendCell(row, candidate.meets_sla ? "Meets SLA" : "Outside SLA");
+          slaCell.className = candidate.meets_sla ? "sla-pass" : "sla-fail";
+          resultsBody.append(row);
+        }
+
+        artifactList.replaceChildren();
+        for (const artifact of Array.isArray(artifacts) ? artifacts : []) {
+          const item = document.createElement("li");
+          const link = document.createElement("a");
+          link.href = artifactHref(runId, artifact);
+          link.textContent = artifact;
+          link.download = artifact.substring(artifact.lastIndexOf("/") + 1);
+          item.append(link);
+          artifactList.append(item);
+        }
+        if (artifactList.children.length === 0) {
+          const item = document.createElement("li");
+          item.textContent = "No deployment artifacts were returned.";
+          artifactList.append(item);
+        }
+        resultsPanel.hidden = false;
       }
 
       async function pollRun(runId, generation) {
@@ -99,6 +204,7 @@
             return;
           }
           if (body.status === "completed") {
+            renderResults(runId, body.results, body.artifacts);
             setStatus(`Run ${runId} completed. Results are ready.`, "completed", false);
             submitButton.disabled = false;
             return;
@@ -125,6 +231,9 @@
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         cancelPolling();
+        resultsPanel.hidden = true;
+        resultsBody.replaceChildren();
+        artifactList.replaceChildren();
         const values = Object.fromEntries(new FormData(form));
         values.total_gpus = Number(values.total_gpus);
         values.ttft = Number(values.ttft);
