@@ -44,6 +44,10 @@ class StoredRun(BaseModel):
     status: RunStatus
     created_at: datetime
     error: str | None = None
+    stdout: str = ""
+    stderr: str = ""
+    exit_code: int | None = None
+    duration_ms: int | None = None
 
 
 def new_stored_run(request: RunRequest) -> StoredRun:

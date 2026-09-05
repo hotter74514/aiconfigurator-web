@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 
 from app.api.runs import build_runs_router
-from app.services.submissions import InMemoryRunSubmissionService
+from app.services.submissions import RunManager
 
 
-def create_app(service: InMemoryRunSubmissionService | None = None) -> FastAPI:
-    submission_service = service or InMemoryRunSubmissionService()
+def create_app(service: RunManager | None = None) -> FastAPI:
+    submission_service = service or RunManager()
     app = FastAPI(title="AIConfigurator Serving Configuration Portal")
     app.include_router(build_runs_router(submission_service))
     app.state.submission_service = submission_service

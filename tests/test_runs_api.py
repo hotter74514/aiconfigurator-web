@@ -5,14 +5,11 @@ from pytest import raises
 
 from app.domain.runs import RunRequest
 from app.main import create_app
-from app.services.submissions import (
-    InMemoryRunSubmissionService,
-    RunTransitionError,
-)
+from app.services.submissions import RunManager, RunTransitionError
 
 
-def make_client() -> tuple[TestClient, InMemoryRunSubmissionService]:
-    service = InMemoryRunSubmissionService()
+def make_client() -> tuple[TestClient, RunManager]:
+    service = RunManager(start_workers=False)
     return TestClient(create_app(service)), service
 
 
@@ -129,7 +126,7 @@ def test_get_run_returns_queued_status_after_submission() -> None:
 
 
 def test_get_run_returns_running_and_completed_transitions() -> None:
-    service = InMemoryRunSubmissionService()
+    service = RunManager(start_workers=False)
     client = TestClient(create_app(service))
     run = service.submit(
         RunRequest(
@@ -151,7 +148,7 @@ def test_get_run_returns_running_and_completed_transitions() -> None:
 
 
 def test_get_run_returns_safe_failure_detail() -> None:
-    service = InMemoryRunSubmissionService()
+    service = RunManager(start_workers=False)
     client = TestClient(create_app(service))
     run = service.submit(
         RunRequest(
@@ -185,7 +182,7 @@ def test_get_run_returns_not_found_for_unknown_id() -> None:
 
 
 def test_status_transitions_reject_invalid_lifecycle_changes() -> None:
-    service = InMemoryRunSubmissionService()
+    service = RunManager(start_workers=False)
     run = service.submit(
         RunRequest(
             model="Qwen/Qwen3-32B-FP8",
@@ -198,3 +195,23 @@ def test_status_transitions_reject_invalid_lifecycle_changes() -> None:
 
     with raises(RunTransitionError):
         service.mark_completed(run.id)
+
+
+def test_post_runs_returns_429_when_pending_queue_is_full() -> None:
+    service = RunManager(start_workers=False, queue_size=1)
+    client = TestClient(create_app(service))
+    payload = {
+        "model": "Qwen/Qwen3-32B-FP8",
+        "system": "h200_sxm",
+        "total_gpus": 32,
+        "ttft": 2000,
+        "tpot": 30,
+    }
+
+    first_response = client.post("/api/runs", json=payload)
+    second_response = client.post("/api/runs", json=payload)
+
+    assert first_response.status_code == 202
+    assert second_response.status_code == 429
+    assert second_response.json() == {"detail": "Run queue is full"}
+    assert service.count() == 1
