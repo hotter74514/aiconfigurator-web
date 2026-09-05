@@ -38,4 +38,4 @@ Move to a collector/agent when telemetry must be routed, sampled, or aggregated 
 
 ## Status
 
-**Proposed — architecture owner approval required.**
+**Accepted — approved by the architecture owner for TASK-033.**

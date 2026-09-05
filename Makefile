@@ -44,6 +44,7 @@ docs:
 	@test -f docs/task-030-backpressure.md
 	@test -f docs/task-031-timeout-cancellation.md
 	@test -f docs/task-032-probes.md
+	@test -f docs/task-033-observability.md
 	@test -f templates/form.html
 	@test -f pyproject.toml
 	@test -f app/main.py
