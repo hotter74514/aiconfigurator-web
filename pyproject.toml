@@ -11,6 +11,11 @@ dependencies = [
   "anyio>=3.6,<4",
   "fastapi>=0.115,<0.116",
   "jinja2>=3.1,<4",
+  "opentelemetry-api>=1.44,<1.45",
+  "opentelemetry-exporter-otlp-proto-http>=1.44,<1.45",
+  "opentelemetry-exporter-prometheus>=0.65b0,<0.66",
+  "opentelemetry-instrumentation-fastapi>=0.65b0,<0.66",
+  "opentelemetry-sdk>=1.44,<1.45",
   "uvicorn[standard]>=0.34,<1",
 ]
 
