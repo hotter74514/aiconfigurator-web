@@ -2,7 +2,7 @@
 
 ## Status
 
-The repository now contains the TASK-013/014 API boundary, TASK-015 bounded worker execution, TASK-016 structured-result parser/ranker, TASK-017 ephemeral artifact serving, the TASK-020 plain HTML/Jinja2 form, TASK-021 status polling, TASK-022 ranked-result/artifact presentation, TASK-030 queue backpressure, TASK-031 timeout/cancellation cleanup, TASK-032 separate liveness/readiness probes, TASK-033 OpenTelemetry traces and focused metrics, TASK-034 structured JSON logs with run correlation, and TASK-040 Linux/amd64 Docker packaging. The following is the deliberately small candidate architecture for the assignment. Each material choice must be accepted in the corresponding ADR before implementation.
+The repository now contains the TASK-013/014 API boundary, TASK-015 bounded worker execution, TASK-016 structured-result parser/ranker, TASK-017 ephemeral artifact serving, the TASK-020 plain HTML/Jinja2 form, TASK-021 status polling, TASK-022 ranked-result/artifact presentation, TASK-030 queue backpressure, TASK-031 timeout/cancellation cleanup, TASK-032 separate liveness/readiness probes, TASK-033 OpenTelemetry traces and focused metrics, TASK-034 structured JSON logs with run correlation, TASK-040 Linux/amd64 Docker packaging, and TASK-041 local Kubernetes Deployment/Service manifests. The following is the deliberately small candidate architecture for the assignment. Each material choice must be accepted in the corresponding ADR before implementation.
 
 ## Candidate Shape
 
@@ -22,6 +22,8 @@ FastAPI + plain HTML/Jinja2 (single service)
 ## Container Packaging
 
 The Dockerfile uses a digest-pinned Python 3.11 slim base and three functional targets: `smoke` contains only the pinned AIConfigurator CLI, `portal` adds the application and artifact directory, and `runtime` starts Uvicorn as the non-root `portal` user. Builds must pass `--platform linux/amd64`; the macOS host architecture is not part of the runtime contract. The image embeds direct AIConfigurator/plotext pins, while the application's transitive Python dependencies are still resolved from the declared version ranges.
+
+The local Kubernetes shape is one `aiconfigurator-portal` Deployment replica behind a ClusterIP Service on port 8000. The pod uses the runtime image with `IfNotPresent`, mounts an `emptyDir` at `/app/data/runs`, and wires `/live` and `/ready` to the corresponding Kubernetes probes. Resource sizing and rollout tuning remain pending measurement tasks.
 
 The portal is a platform wrapper, not a serving runtime. AIConfigurator remains the computation engine and its output remains an estimate.
 
