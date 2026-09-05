@@ -10,7 +10,7 @@ Ten simultaneous sweeps can saturate CPU and starve health endpoints. The portal
 - Bounded workers plus bounded pending queue: predictable resource use and clear backpressure.
 - External queue: stronger durability and scale, but outside the take-home’s minimal architecture.
 
-## Proposed Decision
+## Decision
 
 Start with one or two worker processes and a pending queue of ten. When capacity is exhausted, reject new submissions with `429` or `503`. Keep liveness independent of worker load; readiness checks service initialization and writable artifact storage, not idleness.
 
@@ -22,4 +22,4 @@ Adopt a durable queue and independently scaled workers when queue depth or run l
 
 ## Status
 
-**Proposed — architecture owner approval required.**
+**Accepted — architecture owner approval recorded on 2026-09-05.**
