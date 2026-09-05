@@ -8,7 +8,7 @@ Start with [`docs/assignment-brief.md`](docs/assignment-brief.md), then read [`A
 
 Use two deliberate Codex modes: [`prompts/architect.md`](prompts/architect.md) proposes and records ADRs without coding; [`prompts/builder.md`](prompts/builder.md) implements only decisions marked **Accepted**. Keep the commit history incremental and reviewable; do not squash the submission into one commit.
 
-TASK-000 now provides and verifies a minimal Linux/amd64 AIConfigurator image and smoke runner. The successful run, captured commands, runtimes, and artifact structure are documented in [`docs/task-000-smoke-test.md`](docs/task-000-smoke-test.md). The portal stack remains intentionally unselected.
+TASK-000 now provides and verifies a minimal Linux/amd64 AIConfigurator image and smoke runner. TASK-001 documents the observed CLI and artifact contract in [`docs/task-001-cli-artifacts.md`](docs/task-001-cli-artifacts.md). The portal stack remains intentionally unselected.
 
 ## Quick start
 
