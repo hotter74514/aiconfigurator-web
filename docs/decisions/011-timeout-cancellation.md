@@ -26,4 +26,4 @@ Adopt an external supervisor when runs need independent scaling, durable cancell
 
 ## Status
 
-**Proposed — architecture owner approval required.**
+**Accepted — architecture owner approval recorded on 2026-09-05.**

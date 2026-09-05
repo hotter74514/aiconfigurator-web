@@ -5,7 +5,12 @@ from fastapi.responses import FileResponse
 
 from app.domain.runs import RunAcceptedResponse, RunRequest, RunStatusResponse
 from app.services.artifacts import ArtifactNotFoundError
-from app.services.submissions import QueueCapacityError, RunManager, RunNotFoundError
+from app.services.submissions import (
+    QueueCapacityError,
+    RunManager,
+    RunManagerUnavailableError,
+    RunNotFoundError,
+)
 
 
 def build_runs_router(service: RunManager) -> APIRouter:
@@ -19,6 +24,11 @@ def build_runs_router(service: RunManager) -> APIRouter:
     def submit_run(request: RunRequest) -> RunAcceptedResponse:
         try:
             run = service.submit(request)
+        except RunManagerUnavailableError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(exc),
+            ) from exc
         except QueueCapacityError as exc:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,

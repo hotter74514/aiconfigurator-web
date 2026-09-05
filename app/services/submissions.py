@@ -8,7 +8,11 @@ from uuid import UUID
 from app.domain.results import RankedResults
 from app.domain.runs import RunRequest, RunStatus, StoredRun, new_stored_run
 from app.services.artifacts import ArtifactStore
-from app.services.executor import ExecutionResult, run_aiconfigurator
+from app.services.executor import (
+    TERMINATION_GRACE_SECONDS,
+    ExecutionResult,
+    run_aiconfigurator,
+)
 from app.services.results import parse_result_directory
 
 
@@ -24,7 +28,11 @@ class QueueCapacityError(RuntimeError):
     """Raised when the bounded pending queue has no remaining capacity."""
 
 
-Runner = Callable[[RunRequest, Path], ExecutionResult]
+class RunManagerUnavailableError(RuntimeError):
+    """Raised when submissions arrive after shutdown has started."""
+
+
+Runner = Callable[[RunRequest, Path, Event], ExecutionResult]
 
 
 class RunManager:
@@ -54,7 +62,9 @@ class RunManager:
         self._artifacts = ArtifactStore(configured_root)
         self._artifacts.cleanup_expired()
         self._stop = Event()
+        self._accepting = True
         self._workers: list[Thread] = []
+        self._active_cancellations: dict[UUID, Event] = {}
 
         if start_workers:
             for index in range(worker_count):
@@ -69,6 +79,8 @@ class RunManager:
     def submit(self, request: RunRequest) -> StoredRun:
         run = new_stored_run(request)
         with self._lock:
+            if not self._accepting:
+                raise RunManagerUnavailableError("Run manager is shutting down")
             self._artifacts.prepare_run(run.id)
             try:
                 self._queue.put_nowait(run.id)
@@ -102,7 +114,7 @@ class RunManager:
                 raise RunNotFoundError(str(run_id))
 
             allowed = {
-                "queued": {"running"},
+                "queued": {"running", "failed"},
                 "running": {"completed", "failed"},
                 "completed": set(),
                 "failed": set(),
@@ -161,8 +173,38 @@ class RunManager:
 
     def shutdown(self) -> None:
         self._stop.set()
+
+        cleanup_ids: list[UUID] = []
+        with self._lock:
+            self._accepting = False
+            for run_id, run in self._runs.items():
+                if run.status == "queued":
+                    self._runs[run_id] = run.model_copy(
+                        update={
+                            "status": "failed",
+                            "error": "Run cancelled during service shutdown",
+                        }
+                    )
+                    cleanup_ids.append(run_id)
+            active_cancellations = list(self._active_cancellations.values())
+        for cancellation in active_cancellations:
+            cancellation.set()
+
         for worker in self._workers:
-            worker.join(timeout=1)
+            worker.join(timeout=TERMINATION_GRACE_SECONDS + 1)
+
+        with self._lock:
+            for run_id, run in self._runs.items():
+                if run.status == "running":
+                    self._runs[run_id] = run.model_copy(
+                        update={
+                            "status": "failed",
+                            "error": "Run cancelled during service shutdown",
+                        }
+                    )
+                    cleanup_ids.append(run_id)
+        for run_id in cleanup_ids:
+            self._artifacts.remove_run(run_id)
 
     def artifact_dir(self, run_id: UUID) -> Path:
         return self._artifacts.run_dir(run_id)
@@ -182,12 +224,29 @@ class RunManager:
 
             try:
                 run = self.get(run_id)
-                if run is None:
+                if run is None or run.status != "queued":
                     continue
-                self.mark_running(run_id)
+                run, cancel_event = self._begin_run(run_id)
                 artifact_dir = self._artifacts.run_dir(run_id)
-                execution = self._runner(run.request, artifact_dir)
-                if execution.exit_code == 0:
+                execution = self._runner(run.request, artifact_dir, cancel_event)
+                current = self.get(run_id)
+                if current is None or current.status != "running":
+                    continue
+                if execution.cancelled:
+                    self.mark_failed(
+                        run_id,
+                        "Run cancelled during service shutdown",
+                        execution=execution,
+                    )
+                    self._artifacts.remove_run(run_id)
+                elif execution.timed_out:
+                    self.mark_failed(
+                        run_id,
+                        "AIConfigurator timed out",
+                        execution=execution,
+                    )
+                    self._artifacts.remove_run(run_id)
+                elif execution.exit_code == 0:
                     result_root = self._artifacts.find_result_root(run_id)
                     results = parse_result_directory(
                         result_root,
@@ -213,6 +272,25 @@ class RunManager:
                         execution=execution,
                     )
             except Exception as exc:  # pragma: no cover - defensive worker boundary
-                self.mark_failed(run_id, f"Worker execution failed: {exc}")
+                current = self.get(run_id)
+                if current is not None and current.status == "running":
+                    self.mark_failed(run_id, f"Worker execution failed: {exc}")
             finally:
+                with self._lock:
+                    self._active_cancellations.pop(run_id, None)
                 self._queue.task_done()
+
+    def _begin_run(self, run_id: UUID) -> tuple[StoredRun, Event]:
+        with self._lock:
+            current = self._runs.get(run_id)
+            if current is None:
+                raise RunNotFoundError(str(run_id))
+            if current.status != "queued":
+                raise RunTransitionError(
+                    f"Cannot start run {run_id} from {current.status}"
+                )
+            updated = current.model_copy(update={"status": "running", "error": None})
+            cancellation = Event()
+            self._runs[run_id] = updated
+            self._active_cancellations[run_id] = cancellation
+            return updated, cancellation
