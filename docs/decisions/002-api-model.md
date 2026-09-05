@@ -10,7 +10,7 @@ Sweeps are too slow and variable for a reliable synchronous browser request. The
 - Job ID plus polling: stateless HTTP, simple client behavior, and appropriate for this scope.
 - SSE/WebSockets: richer updates, but adds connection and lifecycle complexity for little value in seconds/minutes-long jobs.
 
-## Proposed Decision
+## Decision
 
 `POST /api/runs` returns `{id, status: "queued"}`. The client polls `GET /api/runs/{id}` about every two seconds until `completed` or `failed`. Completed responses include ranked results; failures include safe error details.
 
@@ -20,4 +20,4 @@ Use SSE or WebSockets if users need fine-grained progress events or runs become 
 
 ## Status
 
-**Proposed — architecture owner approval required.**
+**Accepted — architecture owner approval recorded on 2026-09-05.**
