@@ -1,4 +1,5 @@
 import os
+import logging
 import subprocess
 import sys
 
@@ -9,6 +10,9 @@ from app.services.telemetry import (
     get_telemetry,
     inject_trace_context,
 )
+from app.services.logging import RUN_ID_ENV, configure_logging, log_event
+
+LOGGER = logging.getLogger("aiconfigurator.portal.subprocess")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -18,6 +22,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     telemetry = get_telemetry()
+    configure_logging()
     parent_context = extract_trace_context(dict(os.environ))
     exit_code = 127
     with telemetry.tracer.start_as_current_span(
@@ -28,6 +33,12 @@ def main(argv: list[str] | None = None) -> int:
         try:
             child_environment = os.environ.copy()
             inject_trace_context(child_environment)
+            log_event(
+                LOGGER,
+                "subprocess_started",
+                run_id=os.environ.get(RUN_ID_ENV),
+                command=command[0],
+            )
             completed = subprocess.run(
                 command,
                 check=False,
@@ -50,6 +61,15 @@ def main(argv: list[str] | None = None) -> int:
             span.add_event(
                 "aiconfigurator.cli.completed",
                 attributes={"subprocess.exit_code": completed.returncode},
+            )
+            log_event(
+                LOGGER,
+                "subprocess_child_completed",
+                level=logging.INFO
+                if completed.returncode == 0
+                else logging.WARNING,
+                run_id=os.environ.get(RUN_ID_ENV),
+                exit_code=completed.returncode,
             )
 
     telemetry.force_flush()

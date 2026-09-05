@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import logging
 import math
 import os
 import signal
@@ -11,7 +12,10 @@ from threading import Event
 from opentelemetry.trace import Status, StatusCode, set_span_in_context
 
 from app.domain.runs import RunRequest
+from app.services.logging import RUN_ID_ENV, get_run_id, log_event
 from app.services.telemetry import get_telemetry, inject_trace_context
+
+LOGGER = logging.getLogger("aiconfigurator.portal.executor")
 
 
 @dataclass(frozen=True)
@@ -177,6 +181,15 @@ def run_aiconfigurator(
         },
     )
     telemetry.record_subprocess_outcome(outcome)
+    log_event(
+        LOGGER,
+        "subprocess_completed",
+        level=logging.INFO if outcome == "success" else logging.WARNING,
+        run_id=get_run_id(),
+        outcome=outcome,
+        exit_code=exit_code,
+        duration_ms=duration_ms,
+    )
     otel_context.detach(span_context_token)
     subprocess_span.end()
     return result
@@ -185,6 +198,9 @@ def run_aiconfigurator(
 def _subprocess_environment() -> dict[str, str]:
     environment = os.environ.copy()
     inject_trace_context(environment)
+    run_id = get_run_id()
+    if run_id is not None:
+        environment[RUN_ID_ENV] = run_id
     return environment
 
 

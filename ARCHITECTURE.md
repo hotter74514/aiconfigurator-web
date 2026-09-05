@@ -2,7 +2,7 @@
 
 ## Status
 
-The repository now contains the TASK-013/014 API boundary, TASK-015 bounded worker execution, TASK-016 structured-result parser/ranker, TASK-017 ephemeral artifact serving, the TASK-020 plain HTML/Jinja2 form, TASK-021 status polling, TASK-022 ranked-result/artifact presentation, TASK-030 queue backpressure, TASK-031 timeout/cancellation cleanup, TASK-032 separate liveness/readiness probes, and TASK-033 OpenTelemetry traces and focused metrics. Structured logs remain unimplemented. The following is the deliberately small candidate architecture for the assignment. Each material choice must be accepted in the corresponding ADR before implementation.
+The repository now contains the TASK-013/014 API boundary, TASK-015 bounded worker execution, TASK-016 structured-result parser/ranker, TASK-017 ephemeral artifact serving, the TASK-020 plain HTML/Jinja2 form, TASK-021 status polling, TASK-022 ranked-result/artifact presentation, TASK-030 queue backpressure, TASK-031 timeout/cancellation cleanup, TASK-032 separate liveness/readiness probes, TASK-033 OpenTelemetry traces and focused metrics, and TASK-034 structured JSON logs with run correlation. The following is the deliberately small candidate architecture for the assignment. Each material choice must be accepted in the corresponding ADR before implementation.
 
 ## Candidate Shape
 
@@ -38,7 +38,7 @@ Polling at roughly two seconds is the default candidate. SSE/WebSockets and a Ku
 
 Use ephemeral local artifacts with a 24-hour cleanup policy for the take-home. Bound execution concurrency and pending work so CPU-heavy sweeps cannot starve probes. Prefer a single replica for demo clarity; document that restart loses in-flight jobs and local artifacts.
 
-Keep telemetry focused: FastAPI HTTP instrumentation, runs by status, active/queued runs, run duration, subprocess outcomes, and artifact bytes. Queue depth is a gauge and span attribute, never a metric label. OTLP export is optional through standard environment variables; do not add Kafka, Redis, PostgreSQL, S3/MinIO, a durable queue, or a full collector deployment without an accepted ADR and time justification.
+Keep telemetry focused: FastAPI HTTP instrumentation, runs by status, active/queued runs, run duration, subprocess outcomes, artifact bytes, and JSON lifecycle logs. Logs include event, run ID, and current trace/span IDs without duplicating raw subprocess output or adding an OTel Logs pipeline. Queue depth is a gauge and span attribute, never a metric label. OTLP export is optional through standard environment variables; do not add Kafka, Redis, PostgreSQL, S3/MinIO, a durable queue, or a full collector deployment without an accepted ADR and time justification.
 
 ## Production Evolution
 
