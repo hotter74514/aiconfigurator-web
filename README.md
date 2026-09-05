@@ -31,6 +31,15 @@ make smoke-configurator
 
 The runner stores disposable evidence under `.tmp/task-000/` and does not add application code.
 
+Build and check the portal image with the same Linux/amd64 contract:
+
+```sh
+make docker-build
+make container-check
+```
+
+The runtime target listens on port `8000`, runs as the non-root `portal` user, and stores ephemeral run artifacts under `/app/data/runs`. The smoke-only image remains available for TASK-000 through `AICONFIGURATOR_DOCKER_TARGET=smoke make smoke-configurator`.
+
 ## Current API
 
 With the Python test dependencies installed, start the development server with `make dev` and submit a run:
@@ -49,4 +58,4 @@ Document the execution model, asynchronous API, artifact lifecycle, concurrency,
 
 ## Known Limitations
 
-Kubernetes manifests are not implemented yet. The form is intentionally plain HTML/Jinja2 with a small inline submit/polling/result bridge and no frontend framework. There is no public per-run cancellation endpoint; shutdown cancellation is lifecycle protection only. Metrics, traces, and logs are process-local unless an OTLP backend or external log collector is configured; in-memory metric state resets on restart. Artifacts are ephemeral and are lost on process/pod restart; only explicit generated filenames are downloadable, and generated scripts are never executed by the portal. The local development app is not packaged with the AIConfigurator runtime image until the packaging task. Authentication, TLS, secrets management, and high availability are intentionally out of scope for the take-home; the eventual submission must state what would be added for production.
+Kubernetes manifests are not implemented yet. The form is intentionally plain HTML/Jinja2 with a small inline submit/polling/result bridge and no frontend framework. There is no public per-run cancellation endpoint; shutdown cancellation is lifecycle protection only. Metrics, traces, and logs are process-local unless an OTLP backend or external log collector is configured; in-memory metric state resets on restart. Artifacts are ephemeral and are lost on process/pod restart; only explicit generated filenames are downloadable, and generated scripts are never executed by the portal. The Docker image pins the base image digest and direct AIConfigurator dependencies, but does not yet hash-lock every transitive Python dependency. Authentication, TLS, secrets management, and high availability are intentionally out of scope for the take-home; the eventual submission must state what would be added for production.

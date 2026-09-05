@@ -4,9 +4,9 @@ The roadmap follows assignment risk, not feature breadth. Do not begin Bonus wor
 
 ## P0 — Feasibility spike
 
-- [ ] Dockerize AIConfigurator for Linux/amd64
-- [ ] Run a supported smoke configuration
-- [ ] Inspect CLI output and generated artifacts
+- [x] Dockerize AIConfigurator for Linux/amd64
+- [x] Run a supported smoke configuration
+- [x] Inspect CLI output and generated artifacts
 
 ## P1 — Core execution
 
@@ -30,7 +30,7 @@ The roadmap follows assignment risk, not feature breadth. Do not begin Bonus wor
 
 ## P4 — Container and Kubernetes
 
-- [ ] Build the portal and AIConfigurator runtime image
+- [x] Build the portal and AIConfigurator runtime image
 - [ ] Add local Kubernetes Deployment and Service manifests
 - [ ] Measure CPU behavior and set requests/limits
 - [ ] Verify rolling-update and pod-restart limitations

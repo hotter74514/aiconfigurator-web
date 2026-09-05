@@ -34,7 +34,7 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 
 ## P4 — Packaging and deployment
 
-- [ ] **TASK-040** — Build reproducible Linux/amd64 Docker image
+- [x] **TASK-040** — Build reproducible Linux/amd64 Docker image *(see [container report](docs/task-040-container.md))
 - [ ] **TASK-041** — Add local Kubernetes Deployment and Service
 - [ ] **TASK-042** — Measure and set CPU requests/limits
 - [ ] **TASK-043** — Configure probe thresholds and rolling-update behavior
