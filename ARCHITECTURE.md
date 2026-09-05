@@ -2,7 +2,7 @@
 
 ## Status
 
-The repository now contains the TASK-013 submission boundary; worker execution, result polling, parsing, and UI remain unimplemented. The following is the deliberately small candidate architecture for the assignment. Each material choice must be accepted in the corresponding ADR before implementation.
+The repository now contains the TASK-013/014 API boundary and TASK-015 bounded worker execution; result parsing, artifact serving, and UI remain unimplemented. The following is the deliberately small candidate architecture for the assignment. Each material choice must be accepted in the corresponding ADR before implementation.
 
 ## Candidate Shape
 

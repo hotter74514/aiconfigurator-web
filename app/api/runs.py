@@ -3,10 +3,10 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, status
 
 from app.domain.runs import RunAcceptedResponse, RunRequest, RunStatusResponse
-from app.services.submissions import InMemoryRunSubmissionService
+from app.services.submissions import QueueCapacityError, RunManager
 
 
-def build_runs_router(service: InMemoryRunSubmissionService) -> APIRouter:
+def build_runs_router(service: RunManager) -> APIRouter:
     router = APIRouter()
 
     @router.post(
@@ -15,7 +15,13 @@ def build_runs_router(service: InMemoryRunSubmissionService) -> APIRouter:
         status_code=status.HTTP_202_ACCEPTED,
     )
     def submit_run(request: RunRequest) -> RunAcceptedResponse:
-        run = service.submit(request)
+        try:
+            run = service.submit(request)
+        except QueueCapacityError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=str(exc),
+            ) from exc
         return RunAcceptedResponse(id=run.id, status=run.status)
 
     @router.get(

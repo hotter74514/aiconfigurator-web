@@ -10,7 +10,7 @@ Use two deliberate Codex modes: [`prompts/architect.md`](prompts/architect.md) p
 
 TASK-000 now provides and verifies a minimal Linux/amd64 AIConfigurator image and smoke runner. TASK-001 documents the observed CLI and artifact contract in [`docs/task-001-cli-artifacts.md`](docs/task-001-cli-artifacts.md). The current API shell follows the FastAPI candidate in `ARCHITECTURE.md`; worker execution and UI remain intentionally scoped to later tasks.
 
-TASK-013 now exposes the validated asynchronous submission boundary at `POST /api/runs`, and TASK-014 exposes `GET /api/runs/{id}` with queued/running/completed/failed transitions. Worker execution and result polling UI remain later tasks.
+TASK-013 now exposes the validated asynchronous submission boundary at `POST /api/runs`, TASK-014 exposes `GET /api/runs/{id}` with queued/running/completed/failed transitions, and TASK-015 runs jobs through a bounded local worker with an isolated AIConfigurator subprocess. The real worker verification is documented in [`docs/task-015-worker.md`](docs/task-015-worker.md); result parsing and UI polling remain later tasks.
 
 ## Quick start
 
@@ -41,7 +41,7 @@ curl -X POST http://127.0.0.1:8000/api/runs \
   -d '{"model":"Qwen/Qwen3-32B-FP8","system":"h200_sxm","total_gpus":32,"ttft":2000,"tpot":30}'
 ```
 
-The endpoint returns HTTP `202` with `{ "id": "...", "status": "queued" }`. Poll the returned ID with `GET /api/runs/{id}`; it reports status and safe failure details. A real worker is not connected yet, so submitted runs remain queued unless tests transition them.
+The endpoint returns HTTP `202` with `{ "id": "...", "status": "queued" }`. Poll the returned ID with `GET /api/runs/{id}`; it reports status and safe failure details. In the containerized runtime, the worker invokes AIConfigurator and updates the status. Native macOS execution is not supported because the AIConfigurator dependency is Linux x86-64 only.
 
 ## Design Decisions
 
@@ -49,4 +49,4 @@ Document the execution model, asynchronous API, artifact lifecycle, concurrency,
 
 ## Known Limitations
 
-The worker, result parsing, artifact downloads, Kubernetes manifests, and UI are not implemented yet. Authentication, TLS, secrets management, and high availability are intentionally out of scope for the take-home; the eventual submission must state what would be added for production.
+Result parsing, artifact downloads, Kubernetes manifests, and UI are not implemented yet. The local development app is not packaged with the AIConfigurator runtime image until the packaging task. Authentication, TLS, secrets management, and high availability are intentionally out of scope for the take-home; the eventual submission must state what would be added for production.
