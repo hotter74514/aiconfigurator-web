@@ -20,7 +20,7 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 
 ## P2 — Minimal user experience
 
-- [ ] **TASK-020** — Build the plain HTML/Jinja2 form
+- [x] **TASK-020** — Build the plain HTML/Jinja2 form *(see [form report](docs/task-020-form.md))
 - [ ] **TASK-021** — Poll run status and render loading/error states
 - [ ] **TASK-022** — Render ranked results and estimate warning
 
