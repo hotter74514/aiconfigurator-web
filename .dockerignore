@@ -1,3 +1,10 @@
 .git
+.github
+.codex
+.venv
 .tmp
-.DS_Store
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+IMPLEMENTATION_PLAN.md
