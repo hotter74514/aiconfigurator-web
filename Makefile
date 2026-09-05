@@ -58,6 +58,7 @@ docs:
 	@test -f docs/decisions/008-caching.md
 	@test -f docs/decisions/009-multi-tenancy.md
 	@test -f docs/decisions/010-output-trust.md
+	@test -f docs/decisions/011-timeout-cancellation.md
 
 smoke-configurator:
 	AICONFIGURATOR_IMAGE=$(AICONFIGURATOR_IMAGE) \
