@@ -6,7 +6,7 @@ This index tracks the decisions that must be defensible in the interview. The de
 |---|---|---|
 | [001](decisions/001-execution-model.md) | Bounded local execution | Accepted |
 | [002](decisions/002-api-model.md) | Async job API and polling | Accepted |
-| [003](decisions/003-aiconfigurator-integration.md) | CLI subprocess boundary | Proposed |
+| [003](decisions/003-aiconfigurator-integration.md) | CLI subprocess boundary | Accepted |
 | [004](decisions/004-artifact-storage.md) | Ephemeral artifact lifecycle | Proposed |
 | [005](decisions/005-concurrency.md) | Queue and CPU contention | Proposed |
 | [006](decisions/006-probes.md) | Probe semantics and lifecycle | Proposed |
