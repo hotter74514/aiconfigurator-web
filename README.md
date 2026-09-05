@@ -40,6 +40,20 @@ make container-check
 
 The runtime target listens on port `8000`, runs as the non-root `portal` user, and stores ephemeral run artifacts under `/app/data/runs`. The smoke-only image remains available for TASK-000 through `AICONFIGURATOR_DOCKER_TARGET=smoke make smoke-configurator`.
 
+## Local Kubernetes
+
+The local manifests are in [`k8s/`](k8s/). Build/load `aiconfigurator-portal:local` into the target cluster, verify that `kubectl config current-context` names that local cluster, then apply and port-forward:
+
+```sh
+make docker-build
+kubectl kustomize k8s
+kubectl apply -k k8s
+kubectl rollout status deployment/aiconfigurator-portal
+kubectl port-forward service/aiconfigurator-portal 8000:8000
+```
+
+The Deployment is intentionally one replica with an `emptyDir` artifact volume. CPU requests/limits and rollout behavior are deferred until container measurements are available; pod replacement loses in-flight runs and generated artifacts.
+
 ## Current API
 
 With the Python test dependencies installed, start the development server with `make dev` and submit a run:

@@ -6,7 +6,7 @@ AICONFIGURATOR_MODEL ?= Qwen/Qwen3-32B-FP8
 AICONFIGURATOR_GPUS ?= 32
 AICONFIGURATOR_SYSTEM ?= h200_sxm
 
-.PHONY: help status docs check smoke-configurator docker-build container-check dev build format lint typecheck test ci
+.PHONY: help status docs check smoke-configurator docker-build container-check k8s-render dev build format lint typecheck test ci
 
 PORTAL_IMAGE ?= aiconfigurator-portal:local
 PORTAL_PLATFORM ?= linux/amd64
@@ -18,6 +18,7 @@ help:
 	@echo "  make smoke-configurator  Run the Linux/amd64 AIConfigurator smoke test"
 	@echo "  make docker-build       Build the Linux/amd64 portal image"
 	@echo "  make container-check    Check portal probes and metrics in Docker"
+	@echo "  make k8s-render         Render local Kubernetes manifests"
 	@echo "  make dev       Start the configured development server"
 	@echo "  make build     Create the production build"
 	@echo "  make format    Run the configured formatter"
@@ -53,6 +54,9 @@ docs:
 	@test -f docs/task-034-logging.md
 	@test -f docs/task-040-container.md
 	@test -x scripts/container-check.sh
+	@test -f k8s/kustomization.yaml
+	@test -f k8s/deployment.yaml
+	@test -f k8s/service.yaml
 	@test -f templates/form.html
 	@test -f pyproject.toml
 	@test -f app/main.py
@@ -83,6 +87,9 @@ docker-build:
 
 container-check: docker-build
 	PORTAL_IMAGE=$(PORTAL_IMAGE) PORTAL_PLATFORM=$(PORTAL_PLATFORM) ./scripts/container-check.sh
+
+k8s-render:
+	kubectl kustomize k8s
 
 check: docs
 	@if test -f package.json; then \
