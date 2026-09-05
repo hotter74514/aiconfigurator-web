@@ -213,5 +213,6 @@ def test_post_runs_returns_429_when_pending_queue_is_full() -> None:
 
     assert first_response.status_code == 202
     assert second_response.status_code == 429
+    assert second_response.headers["retry-after"] == "1"
     assert second_response.json() == {"detail": "Run queue is full"}
     assert service.count() == 1
