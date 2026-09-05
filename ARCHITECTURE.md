@@ -2,7 +2,7 @@
 
 ## Status
 
-The repository now contains the TASK-013/014 API boundary, TASK-015 bounded worker execution, TASK-016 structured-result parser/ranker, TASK-017 ephemeral artifact serving, the TASK-020 plain HTML/Jinja2 form, TASK-021 status polling, and TASK-022 ranked-result/artifact presentation; operational endpoints remain unimplemented. The following is the deliberately small candidate architecture for the assignment. Each material choice must be accepted in the corresponding ADR before implementation.
+The repository now contains the TASK-013/014 API boundary, TASK-015 bounded worker execution, TASK-016 structured-result parser/ranker, TASK-017 ephemeral artifact serving, the TASK-020 plain HTML/Jinja2 form, TASK-021 status polling, TASK-022 ranked-result/artifact presentation, and TASK-030 queue backpressure; timeout handling and operational endpoints remain unimplemented. The following is the deliberately small candidate architecture for the assignment. Each material choice must be accepted in the corresponding ADR before implementation.
 
 ## Candidate Shape
 
@@ -24,6 +24,7 @@ The portal is a platform wrapper, not a serving runtime. AIConfigurator remains 
 ## API Candidate
 
 - `POST /api/runs` validates model, GPU system/type, total GPUs, TTFT, and TPOT, then returns `{id, status: "queued"}`.
+- A full pending queue rejects `POST /api/runs` with HTTP `429` and `Retry-After: 1`; readiness remains independent of worker idleness.
 - `GET /api/runs/{id}` returns status, failure information, or ranked configurations when complete.
 - `GET /api/runs/{id}/artifacts/{name}` downloads an allow-listed generated artifact.
 - `GET /live` checks only that the process is alive.

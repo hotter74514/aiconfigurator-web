@@ -26,7 +26,7 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 
 ## P3 — Operations and failure modes
 
-- [ ] **TASK-030** — Enforce bounded queue and return `429`/`503` under saturation
+- [x] **TASK-030** — Enforce bounded queue and return `429`/`503` under saturation *(see [backpressure report](docs/task-030-backpressure.md))
 - [ ] **TASK-031** — Add timeout, cancellation, subprocess cleanup, and regression tests
 - [ ] **TASK-032** — Implement distinct `/live` and `/ready` probes
 - [ ] **TASK-033** — Add focused metrics
