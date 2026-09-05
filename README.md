@@ -10,7 +10,7 @@ Use two deliberate Codex modes: [`prompts/architect.md`](prompts/architect.md) p
 
 TASK-000 now provides and verifies a minimal Linux/amd64 AIConfigurator image and smoke runner. TASK-001 documents the observed CLI and artifact contract in [`docs/task-001-cli-artifacts.md`](docs/task-001-cli-artifacts.md). The current API shell follows the FastAPI candidate in `ARCHITECTURE.md`; worker execution and UI remain intentionally scoped to later tasks.
 
-TASK-013 now exposes the validated asynchronous submission boundary at `POST /api/runs`, TASK-014 exposes `GET /api/runs/{id}` with queued/running/completed/failed transitions, and TASK-015 runs jobs through a bounded local worker with an isolated AIConfigurator subprocess. The real worker verification is documented in [`docs/task-015-worker.md`](docs/task-015-worker.md); result parsing and UI polling remain later tasks.
+TASK-013 now exposes the validated asynchronous submission boundary at `POST /api/runs`, TASK-014 exposes `GET /api/runs/{id}` with queued/running/completed/failed transitions, and TASK-015 runs jobs through a bounded local worker with an isolated AIConfigurator subprocess. TASK-016 adds a structured CSV parser and deterministic SLA-aware ranking; its verification is documented in [`docs/task-016-results.md`](docs/task-016-results.md). Artifact wiring and UI polling remain later tasks.
 
 ## Quick start
 
@@ -49,4 +49,4 @@ Document the execution model, asynchronous API, artifact lifecycle, concurrency,
 
 ## Known Limitations
 
-Result parsing, artifact downloads, Kubernetes manifests, and UI are not implemented yet. The local development app is not packaged with the AIConfigurator runtime image until the packaging task. Authentication, TLS, secrets management, and high availability are intentionally out of scope for the take-home; the eventual submission must state what would be added for production.
+Artifact downloads, Kubernetes manifests, and UI are not implemented yet. The parser is intentionally a pure adapter until TASK-017 chooses and implements artifact storage; the local development app is not packaged with the AIConfigurator runtime image until the packaging task. Authentication, TLS, secrets management, and high availability are intentionally out of scope for the take-home; the eventual submission must state what would be added for production.

@@ -58,4 +58,4 @@ The CSVs are the primary structured result candidates. Aggregate rows include th
 - Keep the original files for download and debugging; normalize a separate result model later.
 - Version/package and input metadata must travel with normalized results because output fields can change.
 
-Parser and artifact-serving implementation remain future tasks (`TASK-016` and `TASK-017`).
+The parser and ranker are implemented in `TASK-016`; artifact storage and serving remain `TASK-017`.
