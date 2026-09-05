@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aiconfigurator-portal
+  labels:
+    app.kubernetes.io/name: aiconfigurator-portal
+    app.kubernetes.io/component: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: aiconfigurator-portal
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: aiconfigurator-portal
+        app.kubernetes.io/component: web
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: portal
+          image: aiconfigurator-portal:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            - name: AICONFIGURATOR_ARTIFACT_ROOT
+              value: /app/data/runs
+            - name: OTEL_SERVICE_NAME
+              value: aiconfigurator-portal
+          volumeMounts:
+            - name: run-artifacts
+              mountPath: /app/data/runs
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+      volumes:
+        - name: run-artifacts
+          emptyDir: {}

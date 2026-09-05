@@ -31,7 +31,7 @@ The roadmap follows assignment risk, not feature breadth. Do not begin Bonus wor
 ## P4 — Container and Kubernetes
 
 - [x] Build the portal and AIConfigurator runtime image
-- [ ] Add local Kubernetes Deployment and Service manifests
+- [x] Add local Kubernetes Deployment and Service manifests
 - [ ] Measure CPU behavior and set requests/limits
 - [ ] Verify rolling-update and pod-restart limitations
 
