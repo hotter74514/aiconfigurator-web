@@ -22,10 +22,12 @@ def test_index_renders_plain_jinja_form() -> None:
     assert "predictions must be validated" in response.text
 
 
-def test_index_keeps_polling_and_result_rendering_out_of_scope() -> None:
+def test_index_defers_result_rendering_but_contains_status_polling() -> None:
     client = TestClient(create_app(RunManager(start_workers=False)))
 
     response = client.get("/")
 
-    assert "setInterval" not in response.text
+    assert "POLL_INTERVAL_MS = 2000" in response.text
+    assert "setTimeout" in response.text
+    assert "GET /api/runs/" not in response.text
     assert "ranked-results" not in response.text
