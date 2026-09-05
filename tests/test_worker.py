@@ -1,5 +1,6 @@
 import time
 from pathlib import Path
+from threading import Event
 from uuid import UUID
 
 from pytest import raises
@@ -141,3 +142,42 @@ def test_pending_queue_rejects_work_after_capacity() -> None:
         manager.submit(make_request())
 
     assert manager.count() == 2
+
+
+def test_pending_queue_rejects_work_while_worker_and_queue_are_busy() -> None:
+    started = Event()
+    release = Event()
+
+    def blocking_runner(_: RunRequest, save_dir: Path) -> ExecutionResult:
+        del save_dir
+        started.set()
+        assert release.wait(timeout=2)
+        return ExecutionResult(
+            exit_code=7,
+            stdout="",
+            stderr="capacity test",
+            duration_ms=1,
+        )
+
+    manager = RunManager(
+        runner=blocking_runner,
+        worker_count=1,
+        queue_size=1,
+    )
+    try:
+        active = manager.submit(make_request())
+        assert started.wait(timeout=2)
+        queued = manager.submit(make_request())
+
+        with raises(QueueCapacityError):
+            manager.submit(make_request())
+
+        active_run = manager.get(active.id)
+        queued_run = manager.get(queued.id)
+        assert active_run is not None
+        assert queued_run is not None
+        assert active_run.status == "running"
+        assert queued_run.status == "queued"
+    finally:
+        release.set()
+        manager.shutdown()

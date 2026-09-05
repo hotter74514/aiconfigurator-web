@@ -23,6 +23,7 @@ def build_runs_router(service: RunManager) -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=str(exc),
+                headers={"Retry-After": "1"},
             ) from exc
         return RunAcceptedResponse(id=run.id, status=run.status)
 
