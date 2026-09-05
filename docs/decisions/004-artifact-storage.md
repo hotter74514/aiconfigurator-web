@@ -20,4 +20,4 @@ Use object storage plus a metadata database when users need bookmarked results, 
 
 ## Status
 
-**Proposed — architecture owner approval required.**
+**Accepted — architecture owner approval recorded on 2026-09-05.**

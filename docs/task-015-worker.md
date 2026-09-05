@@ -24,7 +24,7 @@ stdout: 8726 bytes
 stderr: 0 bytes
 ```
 
-The worker test command mounted the current `app/` package into the container and submitted a `RunRequest` through `RunManager`; AIConfigurator itself was executed by the child process. This verified execution and failure capture only; it did not persist artifacts.
+The worker test command mounted the current `app/` package into the container and submitted a `RunRequest` through `RunManager`; AIConfigurator itself was executed by the child process. TASK-017 now adds per-run artifact persistence and result parsing on top of this execution boundary.
 
 ## Tests
 
@@ -32,4 +32,4 @@ The focused suite covers command construction, successful completion, non-zero e
 
 ## Deferred Work
 
-Timeout/cancellation, artifact directory allocation, result parsing, structured logs, metrics, and production container packaging remain in later tasks. The worker currently has no timeout so cancellation policy is not silently chosen ahead of TASK-031.
+Timeout/cancellation, structured logs, metrics, and production container packaging remain in later tasks. The worker currently has no timeout so cancellation policy is not silently chosen ahead of TASK-031.
