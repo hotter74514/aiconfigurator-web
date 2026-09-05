@@ -1,0 +1,20 @@
+tempo:
+  reportingEnabled: false
+  memBallastSizeMbs: 0
+  retention: 24h
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+persistence:
+  enabled: false
+
+service:
+  type: ClusterIP
+
+serviceMonitor:
+  enabled: false
