@@ -6,13 +6,18 @@ AICONFIGURATOR_MODEL ?= Qwen/Qwen3-32B-FP8
 AICONFIGURATOR_GPUS ?= 32
 AICONFIGURATOR_SYSTEM ?= h200_sxm
 
-.PHONY: help status docs check smoke-configurator dev build format lint typecheck test ci
+.PHONY: help status docs check smoke-configurator docker-build container-check dev build format lint typecheck test ci
+
+PORTAL_IMAGE ?= aiconfigurator-portal:local
+PORTAL_PLATFORM ?= linux/amd64
 
 help:
 	@echo "Available targets:"
 	@echo "  make status    Show the current Git branch and working tree"
 	@echo "  make check     Validate project guidance and configured app checks"
 	@echo "  make smoke-configurator  Run the Linux/amd64 AIConfigurator smoke test"
+	@echo "  make docker-build       Build the Linux/amd64 portal image"
+	@echo "  make container-check    Check portal probes and metrics in Docker"
 	@echo "  make dev       Start the configured development server"
 	@echo "  make build     Create the production build"
 	@echo "  make format    Run the configured formatter"
@@ -46,6 +51,8 @@ docs:
 	@test -f docs/task-032-probes.md
 	@test -f docs/task-033-observability.md
 	@test -f docs/task-034-logging.md
+	@test -f docs/task-040-container.md
+	@test -x scripts/container-check.sh
 	@test -f templates/form.html
 	@test -f pyproject.toml
 	@test -f app/main.py
@@ -71,6 +78,12 @@ smoke-configurator:
 	AICONFIGURATOR_SYSTEM=$(AICONFIGURATOR_SYSTEM) \
 	./scripts/smoke-test.sh
 
+docker-build:
+	docker build --platform $(PORTAL_PLATFORM) --target runtime --load -t $(PORTAL_IMAGE) .
+
+container-check: docker-build
+	PORTAL_IMAGE=$(PORTAL_IMAGE) PORTAL_PLATFORM=$(PORTAL_PLATFORM) ./scripts/container-check.sh
+
 check: docs
 	@if test -f package.json; then \
 		$(MAKE) lint typecheck test; \
@@ -90,8 +103,13 @@ dev:
 	fi
 
 build:
-	@test -f package.json || (echo "package.json is not configured yet; choose the application stack first."; exit 1)
-	$(PACKAGE_MANAGER) run build
+	@if test -f package.json; then \
+		$(PACKAGE_MANAGER) run build; \
+	elif test -f pyproject.toml; then \
+		$(MAKE) docker-build; \
+	else \
+		echo "Application package is not configured yet; choose the application stack first."; exit 1; \
+	fi
 
 format:
 	@test -f package.json || (echo "package.json is not configured yet; configure a formatter first."; exit 1)
@@ -117,6 +135,8 @@ test:
 ci: check
 	@if test -f package.json; then \
 		$(MAKE) build; \
+	elif test -f pyproject.toml; then \
+		$(MAKE) docker-build; \
 	else \
-		echo "Scaffold CI checks passed; application build is not configured yet."; \
+		echo "Application build is not configured yet."; \
 	fi

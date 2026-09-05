@@ -5,6 +5,7 @@ repo_dir="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 cd "$repo_dir"
 
 image="${AICONFIGURATOR_IMAGE:-aiconfigurator-web:local}"
+target="${AICONFIGURATOR_DOCKER_TARGET:-smoke}"
 model="${AICONFIGURATOR_MODEL:-Qwen/Qwen3-32B-FP8}"
 gpus="${AICONFIGURATOR_GPUS:-32}"
 system="${AICONFIGURATOR_SYSTEM:-h200_sxm}"
@@ -30,7 +31,7 @@ overall_status_file="$output_dir/exit-status.txt"
 commands_file="$output_dir/commands.txt"
 files_file="$output_dir/artifact-files.txt"
 
-build_command="docker build --platform linux/amd64 --load -t $image ."
+build_command="docker build --platform linux/amd64 --target $target --load -t $image ."
 reference_command="docker run --rm --platform linux/amd64 $image cli default --model $model --total-gpus $gpus --system $system"
 artifact_command="docker run --rm --platform linux/amd64 --mount type=bind,src=$output_dir/artifacts,dst=/tmp/aiconfigurator-run $image cli default --model $model --total-gpus $gpus --system $system --save-dir /tmp/aiconfigurator-run"
 
