@@ -4,6 +4,8 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.domain.results import RankedResults
+
 
 class RunRequest(BaseModel):
     """User-supplied constraints accepted by POST /api/runs."""
@@ -36,6 +38,8 @@ class RunStatusResponse(BaseModel):
     id: UUID
     status: RunStatus
     error: str | None = None
+    results: RankedResults | None = None
+    artifacts: list[str] | None = None
 
 
 class StoredRun(BaseModel):
@@ -48,6 +52,8 @@ class StoredRun(BaseModel):
     stderr: str = ""
     exit_code: int | None = None
     duration_ms: int | None = None
+    results: RankedResults | None = None
+    artifacts: list[str] = Field(default_factory=list)
 
 
 def new_stored_run(request: RunRequest) -> StoredRun:

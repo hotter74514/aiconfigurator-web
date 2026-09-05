@@ -1,9 +1,11 @@
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import FileResponse
 
 from app.domain.runs import RunAcceptedResponse, RunRequest, RunStatusResponse
-from app.services.submissions import QueueCapacityError, RunManager
+from app.services.artifacts import ArtifactNotFoundError
+from app.services.submissions import QueueCapacityError, RunManager, RunNotFoundError
 
 
 def build_runs_router(service: RunManager) -> APIRouter:
@@ -36,6 +38,23 @@ def build_runs_router(service: RunManager) -> APIRouter:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Run not found",
             )
-        return RunStatusResponse(id=run.id, status=run.status, error=run.error)
+        return RunStatusResponse(
+            id=run.id,
+            status=run.status,
+            error=run.error,
+            results=run.results,
+            artifacts=run.artifacts or None,
+        )
+
+    @router.get("/api/runs/{run_id}/artifacts/{artifact_name:path}")
+    def download_artifact(run_id: UUID, artifact_name: str) -> FileResponse:
+        try:
+            path = service.artifact_path(run_id, artifact_name)
+        except (ArtifactNotFoundError, RunNotFoundError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Artifact not found",
+            ) from exc
+        return FileResponse(path, filename=path.name)
 
     return router

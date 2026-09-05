@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 from uuid import UUID
 
 from pytest import raises
@@ -28,7 +29,15 @@ def wait_for_status(manager: RunManager, run_id: UUID, expected: str) -> None:
     raise AssertionError(f"run did not reach {expected}")
 
 
-def successful_runner(_: RunRequest) -> ExecutionResult:
+def successful_runner(_: RunRequest, save_dir: Path) -> ExecutionResult:
+    result_dir = save_dir / "agg"
+    result_dir.mkdir(parents=True)
+    (result_dir / "best_config_topn.csv").write_text(
+        "model,ttft,tpot,request_latency,tokens/s,tokens/s/gpu,"
+        "num_total_gpus,concurrency,backend,system\n"
+        "Qwen/Qwen3-32B-FP8,1000,29,30000,1000,1000,1,1,trtllm,h200_sxm\n",
+        encoding="utf-8",
+    )
     return ExecutionResult(
         exit_code=0,
         stdout="AIConfigurator Final Results",
@@ -37,7 +46,8 @@ def successful_runner(_: RunRequest) -> ExecutionResult:
     )
 
 
-def failing_runner(_: RunRequest) -> ExecutionResult:
+def failing_runner(_: RunRequest, save_dir: Path) -> ExecutionResult:
+    del save_dir
     return ExecutionResult(
         exit_code=7,
         stdout="partial output",
@@ -46,7 +56,8 @@ def failing_runner(_: RunRequest) -> ExecutionResult:
     )
 
 
-def raising_runner(_: RunRequest) -> ExecutionResult:
+def raising_runner(_: RunRequest, save_dir: Path) -> ExecutionResult:
+    del save_dir
     raise RuntimeError("runner crashed")
 
 
@@ -67,6 +78,10 @@ def test_command_builder_passes_user_constraints() -> None:
         "30.0",
     ]
 
+    assert build_aiconfigurator_command(
+        make_request(), Path("/tmp/run-artifacts")
+    )[-2:] == ["--save-dir", "/tmp/run-artifacts"]
+
 
 def test_worker_marks_success_and_captures_stdout() -> None:
     manager = RunManager(runner=successful_runner)
@@ -83,6 +98,9 @@ def test_worker_marks_success_and_captures_stdout() -> None:
     assert stored.exit_code == 0
     assert stored.duration_ms == 12
     assert stored.error is None
+    assert stored.results is not None
+    assert stored.results.candidates[0].predicted_tokens_per_second == 1000
+    assert stored.artifacts == ["agg/best_config_topn.csv"]
 
 
 def test_worker_marks_nonzero_exit_as_failed_and_captures_stderr() -> None:

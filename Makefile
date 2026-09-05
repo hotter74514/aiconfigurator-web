@@ -37,6 +37,7 @@ docs:
 	@test -f docs/task-001-cli-artifacts.md
 	@test -f docs/task-015-worker.md
 	@test -f docs/task-016-results.md
+	@test -f docs/task-017-artifacts.md
 	@test -f pyproject.toml
 	@test -f app/main.py
 	@test -f tests/test_runs_api.py
