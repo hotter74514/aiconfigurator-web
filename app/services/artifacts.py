@@ -1,6 +1,7 @@
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import tempfile
 import time
 from uuid import UUID
 
@@ -72,6 +73,19 @@ class ArtifactStore:
 
     def remove_run(self, run_id: UUID) -> None:
         shutil.rmtree(self.run_dir(run_id), ignore_errors=True)
+
+    def is_writable(self) -> bool:
+        """Return whether the artifact root can create and remove a file."""
+
+        try:
+            self.root.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(
+                dir=self.root, prefix=".readiness-", delete=True
+            ):
+                pass
+        except OSError:
+            return False
+        return True
 
     def find_result_root(self, run_id: UUID) -> Path:
         run_dir = self.run_dir(run_id)
