@@ -47,7 +47,7 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 - [x] **TASK-051** — Document known limitations and production evolution
 - [x] **TASK-052** — Verify from a clean checkout *(see [clean-checkout report](docs/task-052-clean-checkout.md))*
 - [x] **TASK-053** — Rehearse the demo checklist *(see [demo rehearsal report](docs/task-053-demo-rehearsal.md))*
-- [ ] **TASK-054** — Prepare incremental commit history for review
+- [x] **TASK-054** — Prepare incremental commit history for review *(see [commit-history report](docs/task-054-commit-history.md))*
 
 ## Bonus — Only after P0–P5
 
