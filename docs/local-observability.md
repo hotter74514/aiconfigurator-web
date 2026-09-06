@@ -80,6 +80,14 @@ to Loki structured metadata. Grafana is provisioned with Prometheus, Tempo,
 and Loki; Tempo trace-to-logs and Loki TraceID derived-field correlation are
 editable from the Grafana UI.
 
+Tempo is tuned for the single-node local cluster: liveness uses a TCP check on
+port 3200 while `/ready` is reserved for readiness, so temporary query latency
+does not restart a healthy process. Readiness allows six consecutive 10-second
+checks to fail, and Tempo query concurrency is bounded to four querier queries
+and eight search jobs. Tempo requests `250m` CPU/`512Mi` memory and limits at
+`1000m` CPU/`1Gi` memory. These are local-demo safeguards, not benchmarked
+production capacity numbers.
+
 ## Access and verification
 
 Use separate terminals for the port-forwards:
