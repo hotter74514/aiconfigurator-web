@@ -56,6 +56,7 @@ docs:
 	@test -f docs/task-040-container.md
 	@test -f docs/task-052-clean-checkout.md
 	@test -f docs/task-053-demo-rehearsal.md
+	@test -f docs/task-054-commit-history.md
 	@test -x scripts/container-check.sh
 	@test -f k8s/kustomization.yaml
 	@test -f k8s/deployment.yaml
