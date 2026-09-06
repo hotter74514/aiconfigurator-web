@@ -109,4 +109,28 @@ ADR-008 (caching), ADR-009 (multi-tenancy), and ADR-010 (output-trust policy) re
 
 ## Known Limitations
 
-The form is intentionally plain HTML/Jinja2 with a small inline submit/polling/result bridge and no frontend framework. There is no public per-run cancellation endpoint; shutdown cancellation is lifecycle protection only. Metrics, traces, and logs are process-local unless an OTLP backend or external log collector is configured; in-memory metric state resets on restart. The local Minikube observability stack uses ephemeral storage and is not production-ready; Grafana Loki/Alloy collection requires privileged read-only access to the node's `/var/log` path. Artifacts are ephemeral and are lost on process/pod restart; only explicit generated filenames are downloadable, and generated scripts are never executed by the portal. The Docker image pins the base image digest and direct AIConfigurator dependencies, but does not yet hash-lock every transitive Python dependency. Authentication, TLS, secrets management, and high availability are intentionally out of scope for the take-home; the eventual submission must state what would be added for production.
+These are deliberate take-home boundaries rather than hidden production guarantees:
+
+- **Estimate accuracy:** AIConfigurator predicts serving behavior; every result needs a real benchmark on the target model, GPU system, backend, and workload before it is used for capacity or deployment decisions. The recorded CPU/memory measurement is a local Minikube observation, not a production capacity benchmark.
+- **Execution and durability:** run metadata is in memory, there is one local worker by default, and the pending queue is capped at ten. A process or Pod restart loses queued/in-flight runs and their status.
+- **Artifact lifecycle:** artifacts are stored locally with a 24-hour cleanup policy and Kubernetes uses `emptyDir`. They are lost on restart, there is no run history, and only explicit allow-listed filenames can be downloaded. Generated scripts are never executed by the portal.
+- **Platform and supply chain:** AIConfigurator is supported only in the Linux x86-64 container contract, so macOS development requires Docker with `linux/amd64`. The base image and direct AIConfigurator dependencies are pinned, but transitive project dependencies are not yet hash-locked.
+- **User and network security:** authentication, authorization, tenant ownership, quotas, TLS, ingress, secret management, and high availability are intentionally absent. The local deployment is for a controlled demo and must not be treated as an internet-facing service.
+- **Cancellation and operations:** there is no public per-run cancellation endpoint; cancellation is currently limited to service shutdown and timeout cleanup. Metrics and traces are process-local unless an OTLP backend is configured, and Prometheus state resets on restart. The local Loki/Alloy setup is ephemeral and requires privileged read-only access to Kubernetes node log paths.
+
+## Production evolution
+
+Add the following capabilities only when the corresponding requirement becomes real:
+
+| Trigger | Production change |
+|---|---|
+| Runs must survive Pod replacement or results need bookmarks | Store run metadata in a durable database; use a durable queue with retry/idempotency semantics; put artifacts in object storage with lifecycle rules and controlled download URLs. |
+| Multiple replicas or sustained queue pressure | Separate the stateless API from independently scaled workers; use shared durable state, admission quotas, rate limiting, and worker autoscaling based on queue depth and run latency. |
+| Multiple teams or untrusted users | Add authentication, per-run ownership checks, team-level quotas, tenant isolation, audit events, and authorization before exposing metadata, queue access, or artifacts. |
+| Internet or enterprise deployment | Add TLS termination, ingress/API gateway policy, secret-manager integration, network policies, image signing/scanning, and a documented backup/restore process. |
+| Production availability requirements | Run multiple API replicas, durable worker infrastructure, PodDisruptionBudgets, upgrade/rollback procedures, and recovery objectives appropriate to the service. |
+| Capacity decisions need evidence | Add a repeatable benchmark harness, versioned model/GPU/backend inputs, actual-vs-predicted result tracking, and a validation gate before accepting an estimate for deployment. |
+| Cross-service observability and retention | Route telemetry through a managed or production collector, use durable metrics/traces/log storage, define retention and access controls, and add alerts/SLOs without promoting run IDs or trace IDs to high-cardinality labels. |
+| Reproducible releases are required | Generate a complete dependency lock with hashes, publish an SBOM, scan the image and dependencies, and verify provenance in CI. |
+
+The current single-service shape is intentionally a reversible starting point. Each evolution should preserve the explicit CLI boundary and safe artifact handling while adding only the durability, isolation, or operational control justified by its trigger.
