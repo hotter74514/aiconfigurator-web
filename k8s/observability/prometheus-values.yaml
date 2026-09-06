@@ -13,6 +13,13 @@ prometheus-pushgateway:
 server:
   persistentVolume:
     enabled: false
+  # Prometheus must store exemplars before Grafana can link metric points to Tempo.
+  extraFlags:
+    - web.enable-lifecycle
+    - enable-feature=exemplar-storage
+  exemplars:
+    # Keep exemplar retention bounded for the local single-node cluster.
+    max_exemplars: 10000
   resources:
     requests:
       cpu: 100m
