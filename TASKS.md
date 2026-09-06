@@ -44,7 +44,7 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 ## P5 — Submission and defense
 
 - [x] **TASK-050** — Document architecture and accepted ADR summaries in README
-- [ ] **TASK-051** — Document known limitations and production evolution
+- [x] **TASK-051** — Document known limitations and production evolution
 - [ ] **TASK-052** — Verify from a clean checkout
 - [ ] **TASK-053** — Rehearse the demo checklist
 - [ ] **TASK-054** — Prepare incremental commit history for review
