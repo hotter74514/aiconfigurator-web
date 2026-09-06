@@ -52,6 +52,10 @@ identity, restores artifacts into each new ephemeral run directory, and is lost
 on restart. It does not provide cross-replica deduplication or durable cache
 retention.
 
+Run history is not yet implemented; its proposed bounded process-local design
+is recorded in ADR-014 and requires architecture-owner approval before code or
+API changes.
+
 ## Production Evolution
 
 If scale or durability becomes a requirement, evolve toward a multi-replica API, durable queue, worker Deployment or Jobs, metadata database, object storage, per-user authorization/quotas, and production observability. Document the trigger for each addition instead of pre-building it.

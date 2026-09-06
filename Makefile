@@ -83,6 +83,7 @@ docs:
 	@test -f docs/decisions/010-output-trust.md
 	@test -f docs/decisions/011-timeout-cancellation.md
 	@test -f docs/decisions/013-loki-alloy-log-forwarding.md
+	@test -f docs/decisions/014-run-history.md
 
 smoke-configurator:
 	AICONFIGURATOR_IMAGE=$(AICONFIGURATOR_IMAGE) \
