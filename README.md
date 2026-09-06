@@ -78,7 +78,7 @@ The Deployment uses measured CPU/memory requests and limits and tuned liveness/r
 
 ## Current API
 
-With the Python test dependencies installed, start the development server with `make dev` and submit a run:
+With the Python test dependencies installed, `make dev` starts the server for API/UI-only checks. On macOS, use the Docker or Kubernetes demo path below for real AIConfigurator runs:
 
 ```sh
 curl -X POST http://127.0.0.1:8000/api/runs \
@@ -87,6 +87,34 @@ curl -X POST http://127.0.0.1:8000/api/runs \
 ```
 
 Open `http://127.0.0.1:8000/` for the form. It submits the five constraints to the async API, polls status every two seconds, and reports loading, completion, or safe error states. Completed runs render ranked estimates with SLA outcomes and allow-listed artifact links. The service exposes `/live` for process liveness, `/ready` for worker/storage readiness, and `/metrics` for Prometheus text. Application lifecycle events are JSON logs with `event`, `run_id`, `trace_id`, and `span_id`; set `PORTAL_LOG_LEVEL` to adjust verbosity. OpenTelemetry uses `OTEL_SERVICE_NAME` and can add asynchronous OTLP HTTP trace/metric export with `OTEL_EXPORTER_OTLP_ENDPOINT` or signal-specific endpoint/exporter variables; no collector is required for local metrics. The API returns HTTP `202` with `{ "id": "...", "status": "queued" }`; when all pending queue slots are occupied, it returns `429` with `Retry-After: 1`, and a service shutting down returns `503`. Completed runs include ranked `results` and allow-listed `artifacts`, which can be downloaded with `GET /api/runs/{id}/artifacts/{path}`. The worker uses `AICONFIGURATOR_ARTIFACT_ROOT` (default `.tmp/runs`; use `/app/data/runs` in the container), `AICONFIGURATOR_TIMEOUT_SECONDS` (default 900 seconds), and removes UUID run directories older than 24 hours. Native macOS execution is not supported because the AIConfigurator dependency is Linux x86-64 only.
+
+## Demo rehearsal
+
+The verified demo uses the dedicated `aiconfigurator` Minikube context and a local port-forward. Run the setup in one terminal:
+
+```sh
+make minikube-load-image
+kubectl config current-context  # must print: aiconfigurator
+kubectl apply -k k8s
+kubectl rollout status deployment/aiconfigurator-portal --timeout=180s
+kubectl port-forward service/aiconfigurator-portal 8000:8000
+```
+
+In a second terminal, open the portal at `http://127.0.0.1:8000/`, then submit the support-matrix example and poll the returned ID:
+
+```sh
+curl http://127.0.0.1:8000/live
+curl http://127.0.0.1:8000/ready
+curl -X POST http://127.0.0.1:8000/api/runs \
+  -H 'content-type: application/json' \
+  -d '{"model":"Qwen/Qwen3-32B-FP8","system":"h200_sxm","total_gpus":32,"ttft":2000,"tpot":30}'
+curl http://127.0.0.1:8000/api/runs/<RUN_ID>
+curl -OJ http://127.0.0.1:8000/api/runs/<RUN_ID>/artifacts/<ARTIFACT_PATH>
+curl http://127.0.0.1:8000/metrics
+kubectl logs deployment/aiconfigurator-portal
+```
+
+The exact successful run IDs, ranked output, downloaded artifact, failure recovery, and observed metrics/logs are recorded in [`docs/task-053-demo-rehearsal.md`](docs/task-053-demo-rehearsal.md).
 
 ## Accepted design decisions
 
