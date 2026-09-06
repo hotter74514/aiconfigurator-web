@@ -18,14 +18,42 @@ from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.metrics.view import ExplicitBucketHistogramAggregation, View
 from opentelemetry.trace import Span, format_trace_id
 from prometheus_client import Histogram
+
+
+# Keep additional resolution around the normal ~10-second query duration.
+# The default prometheus_client buckets stop at 10 seconds before jumping to
+# +Inf, which makes quantiles for completed runs above that threshold coarse.
+_RUN_DURATION_BUCKETS = (
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.075,
+    0.1,
+    0.25,
+    0.5,
+    0.75,
+    1.0,
+    2.5,
+    5.0,
+    7.5,
+    10.0,
+    12.5,
+    15.0,
+    20.0,
+    30.0,
+    60.0,
+)
 
 
 _TRACE_RUN_DURATION = Histogram(
     "portal_trace_run_duration_seconds",
     "Completed Portal run duration with a trace exemplar",
     labelnames=("status",),
+    buckets=_RUN_DURATION_BUCKETS,
 )
 
 TRACEPARENT_ENV = "TRACEPARENT"
@@ -164,7 +192,18 @@ def _build_telemetry() -> PortalTelemetry:
         metric_readers.append(
             PeriodicExportingMetricReader(OTLPMetricExporter())
         )
-    meter_provider = MeterProvider(resource=resource, metric_readers=metric_readers)
+    meter_provider = MeterProvider(
+        resource=resource,
+        metric_readers=metric_readers,
+        views=[
+            View(
+                instrument_name="portal.run.duration",
+                aggregation=ExplicitBucketHistogramAggregation(
+                    boundaries=_RUN_DURATION_BUCKETS
+                ),
+            )
+        ],
+    )
     metrics.set_meter_provider(meter_provider)
     return PortalTelemetry(
         TelemetryProviders(

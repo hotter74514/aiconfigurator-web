@@ -36,9 +36,10 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 
 - [x] **TASK-040** — Build reproducible Linux/amd64 Docker image *(see [container report](docs/task-040-container.md))*
 - [x] **TASK-041** — Add local Kubernetes Deployment and Service *(see [Kubernetes report](docs/task-041-kubernetes.md))*
-- [x] **TASK-042** — Measure and set CPU requests/limits *(see [Tempo hardening report](docs/task-043-tempo-hardening.md))*
-- [x] **TASK-043** — Configure probe thresholds and rolling-update behavior *(see [Tempo hardening report](docs/task-043-tempo-hardening.md))*
+- [x] **TASK-042** — Measure and set AIConfigurator Portal CPU/memory requests/limits *(see [Portal resource report](docs/task-042-portal-resources.md))*
+- [x] **TASK-043** — Configure AIConfigurator Portal probe thresholds and rolling-update behavior *(see [Portal rollout report](docs/task-043-portal-rollout.md))*
 - [x] **TASK-044** — Integrate Prometheus exemplars with Tempo trace correlation *(see [exemplar report](docs/task-044-prometheus-exemplars.md))*
+- [x] **TASK-045** — Harden Tempo against probe-induced restarts *(see [Tempo hardening report](docs/task-045-tempo-hardening.md))*
 
 ## P5 — Submission and defense
 

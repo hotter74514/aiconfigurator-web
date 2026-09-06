@@ -33,6 +33,11 @@ make k8s-render
 
 The render completed without a live cluster. A live apply was intentionally not run because the active kubeconfig context was a shared EKS cluster and local AWS credentials were unavailable. No cluster state was changed.
 
-## Pending follow-up
+## Follow-up completed
 
-CPU requests/limits belong to TASK-042 after measurement. Probe thresholds and rolling-update behavior belong to TASK-043. The `emptyDir` volume is deliberately ephemeral: pod replacement loses active runs and generated artifacts.
+TASK-042 measured the AIConfigurator Portal workload and added resource
+requests/limits in [the Portal resource report](task-042-portal-resources.md).
+TASK-043 added Portal probe thresholds and conservative rolling-update behavior
+in [the Portal rollout report](task-043-portal-rollout.md). The `emptyDir`
+volume remains deliberately ephemeral: pod replacement loses active runs and
+generated artifacts.
