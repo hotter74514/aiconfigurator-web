@@ -12,7 +12,7 @@ This index tracks the decisions that must be defensible in the interview. The de
 | [006](decisions/006-probes.md) | Probe semantics and lifecycle | Accepted |
 | [007](decisions/007-observability.md) | Metrics and structured logs | Accepted |
 | [008](decisions/008-caching.md) | Determinism and caching | Accepted |
-| [009](decisions/009-multi-tenancy.md) | Result visibility and quotas | Proposed |
+| [009](decisions/009-multi-tenancy.md) | Result visibility and quotas | Accepted |
 | [010](decisions/010-output-trust.md) | Estimate warnings and validation | Proposed |
 | [011](decisions/011-timeout-cancellation.md) | Timeout, cancellation, and subprocess cleanup | Accepted |
 | [012](decisions/012-local-observability-stack.md) | Minikube local observability stack | Accepted |
@@ -48,6 +48,12 @@ ADR-014 is accepted for the run history milestone. Recent completed and failed
 runs are retained in a bounded process-local index and exposed newest-first by
 `GET /api/runs`; history and artifact availability are not durable across
 process or Pod restarts.
+
+ADR-009 is accepted for the multi-user awareness milestone. The Portal remains
+an explicitly single-user, controlled-demo deployment; it does not accept
+client-supplied identity headers or claim that run IDs provide authorization.
+Authentication, ownership checks, tenant quotas, and audit events remain
+required before exposing the service to shared or untrusted users.
 
 ## Approval protocol
 

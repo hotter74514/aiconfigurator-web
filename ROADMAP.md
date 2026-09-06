@@ -47,4 +47,4 @@ The roadmap follows assignment risk, not feature breadth. Do not begin Bonus wor
 - [x] Aggregated vs disaggregated comparison
 - [x] Deterministic cache
 - [x] Run history
-- [ ] Multi-user awareness
+- [x] Multi-user awareness

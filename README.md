@@ -133,11 +133,12 @@ The detailed records in [`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md) a
 | [007 — Focused observability](docs/decisions/007-observability.md) | OpenTelemetry traces, Prometheus metrics, and correlated structured logs cover HTTP, queue, runs, subprocesses, and artifact bytes. |
 | [008 — Deterministic caching](docs/decisions/008-caching.md) | Successful normalized results and allow-listed artifacts use a bounded process-local LRU cache keyed by request and runtime identity. |
 | [014 — Bounded run history](docs/decisions/014-run-history.md) | Recent completed and failed runs use a bounded process-local index exposed by `GET /api/runs`; eviction does not delete artifacts. |
+| [009 — Single-user boundary](docs/decisions/009-multi-tenancy.md) | The deployment is explicitly single-user and controlled-demo only; it does not accept client-supplied identity headers or provide authorization. |
 | [011 — Timeout and cancellation](docs/decisions/011-timeout-cancellation.md) | Configurable subprocess deadlines (900 seconds by default), process-group cleanup, and shutdown cancellation prevent hung work from occupying workers forever. |
 | [012 — Local observability stack](docs/decisions/012-local-observability-stack.md) | A dedicated Minikube profile runs small, separate Helm releases for Prometheus, Tempo, Grafana, and the OTel Collector. |
 | [013 — Direct Alloy-to-Loki forwarding](docs/decisions/013-loki-alloy-log-forwarding.md) | Alloy collects Kubernetes container logs and writes directly to local Loki while preserving trace/span correlation metadata. |
 
-ADR-009 (multi-tenancy) and ADR-010 (output-trust policy) remain **Proposed** and are not expansion points for the current take-home. The UI's estimate warning is still shown because benchmark validation is required.
+ADR-010 (output-trust policy) remains **Proposed** and is not an expansion point for the current take-home. ADR-009 is accepted only as an explicit single-user boundary; it does not add authentication or multi-tenant authorization. The UI's estimate warning is still shown because benchmark validation is required.
 
 ## Known Limitations
 

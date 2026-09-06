@@ -55,4 +55,4 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 - [x] **BONUS-002** — Aggregated vs disaggregated comparison *(see [bonus report](docs/task-056-mode-comparison.md))*
 - [x] **BONUS-003** — Deterministic result cache *(see [bonus report](docs/task-057-cache.md))*
 - [x] **BONUS-004** — Bounded process-local run history *(see [bonus report](docs/task-058-run-history.md))*
-- [ ] Multi-user awareness
+- [x] **BONUS-005** — Multi-user awareness *(see [bonus report](docs/task-059-multi-user-awareness.md))*
