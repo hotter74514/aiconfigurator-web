@@ -63,6 +63,8 @@ docs:
 	@test -f app/main.py
 	@test -f tests/test_runs_api.py
 	@test -f docs/DESIGN_DECISIONS.md
+	@test -f docs/local-observability.md
+	@test -f docs/decisions/012-local-observability-stack.md
 	@test -f docs/demo-checklist.md
 	@test -f docs/decisions/001-execution-model.md
 	@test -f docs/decisions/002-api-model.md
@@ -75,6 +77,7 @@ docs:
 	@test -f docs/decisions/009-multi-tenancy.md
 	@test -f docs/decisions/010-output-trust.md
 	@test -f docs/decisions/011-timeout-cancellation.md
+	@test -f docs/decisions/013-loki-alloy-log-forwarding.md
 
 smoke-configurator:
 	AICONFIGURATOR_IMAGE=$(AICONFIGURATOR_IMAGE) \
