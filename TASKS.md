@@ -52,7 +52,7 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 ## Bonus — Only after P0–P5
 
 - [x] **BONUS-001** — Pareto frontier visualization *(see [bonus report](docs/task-055-pareto.md))*
-- [ ] Aggregated vs disaggregated comparison
+- [x] **BONUS-002** — Aggregated vs disaggregated comparison *(see [bonus report](docs/task-056-mode-comparison.md))*
 - [ ] Deterministic result cache
 - [ ] Run history
 - [ ] Multi-user awareness

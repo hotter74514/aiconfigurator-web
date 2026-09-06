@@ -49,3 +49,19 @@ def test_index_contains_pareto_frontier_visualization_contract() -> None:
     assert "Throughput vs. request latency" in response.text
     assert "isParetoDominated" in response.text
     assert "renderParetoChart" in response.text
+
+
+def test_index_contains_aggregate_disaggregated_comparison_contract() -> None:
+    client = TestClient(create_app(RunManager(start_workers=False)))
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'id="comparison-panel"' in response.text
+    assert 'id="agg-comparison-card"' in response.text
+    assert 'id="disagg-comparison-card"' in response.text
+    assert 'id="agg-comparison-throughput"' in response.text
+    assert 'id="disagg-comparison-latency"' in response.text
+    assert "renderModeCard" in response.text
+    assert "renderModeComparison" in response.text
+    assert "Comparison is incomplete" in response.text

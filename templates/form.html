@@ -43,6 +43,15 @@
       .pareto-swatch.frontier { background: #1459a6; }
       .pareto-swatch.dominated { background: #9aa7b2; }
       #pareto-frontier-list { line-height: 1.8; }
+      #comparison-panel { border-top: 1px solid #d5dce2; margin-top: 2rem; padding-top: 1.5rem; }
+      .comparison-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+      .comparison-card { background: #fbfcfd; border: 1px solid #d5dce2; border-radius: .25rem; padding: 1rem; }
+      .comparison-card h3 { margin-top: 0; }
+      .comparison-stats { display: grid; gap: .65rem; margin: 0; }
+      .comparison-stat { align-items: baseline; display: flex; gap: .75rem; justify-content: space-between; }
+      .comparison-stat dt { color: #52606d; }
+      .comparison-stat dd { font-weight: 600; margin: 0; text-align: right; }
+      .comparison-status { line-height: 1.5; margin-bottom: 0; }
       .visually-hidden { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
     </style>
   </head>
@@ -109,6 +118,33 @@
           <p id="pareto-summary" role="status"></p>
           <ul id="pareto-frontier-list"></ul>
         </section>
+        <section id="comparison-panel" hidden aria-labelledby="comparison-heading">
+          <h2 id="comparison-heading">Aggregate vs. disaggregated</h2>
+          <p>These summaries compare only candidates that meet both requested targets. They are model-based estimates, not a deployment recommendation.</p>
+          <div class="comparison-grid">
+            <article class="comparison-card" id="agg-comparison-card">
+              <h3>Aggregate (<code>agg</code>)</h3>
+              <dl class="comparison-stats">
+                <div class="comparison-stat"><dt>Candidates</dt><dd id="agg-comparison-count">—</dd></div>
+                <div class="comparison-stat"><dt>Meets SLA</dt><dd id="agg-comparison-feasible">—</dd></div>
+                <div class="comparison-stat"><dt>Best SLA throughput</dt><dd id="agg-comparison-throughput">—</dd></div>
+                <div class="comparison-stat"><dt>Lowest SLA latency</dt><dd id="agg-comparison-latency">—</dd></div>
+              </dl>
+              <p class="comparison-status" id="agg-comparison-status" role="status"></p>
+            </article>
+            <article class="comparison-card" id="disagg-comparison-card">
+              <h3>Disaggregated (<code>disagg</code>)</h3>
+              <dl class="comparison-stats">
+                <div class="comparison-stat"><dt>Candidates</dt><dd id="disagg-comparison-count">—</dd></div>
+                <div class="comparison-stat"><dt>Meets SLA</dt><dd id="disagg-comparison-feasible">—</dd></div>
+                <div class="comparison-stat"><dt>Best SLA throughput</dt><dd id="disagg-comparison-throughput">—</dd></div>
+                <div class="comparison-stat"><dt>Lowest SLA latency</dt><dd id="disagg-comparison-latency">—</dd></div>
+              </dl>
+              <p class="comparison-status" id="disagg-comparison-status" role="status"></p>
+            </article>
+          </div>
+          <p id="comparison-summary" role="status"></p>
+        </section>
         <div id="artifacts-panel">
           <h3>Deployment artifacts</h3>
           <ul id="artifact-list" class="artifact-list"></ul>
@@ -126,6 +162,8 @@
       const paretoChart = document.querySelector("#pareto-chart");
       const paretoSummary = document.querySelector("#pareto-summary");
       const paretoFrontierList = document.querySelector("#pareto-frontier-list");
+      const comparisonPanel = document.querySelector("#comparison-panel");
+      const comparisonSummary = document.querySelector("#comparison-summary");
       const POLL_INTERVAL_MS = 2000;
       let pollTimer = null;
       let pollGeneration = 0;
@@ -328,6 +366,75 @@
         paretoPanel.hidden = false;
       }
 
+      function modeDisplayName(mode) {
+        return mode === "agg" ? "Aggregate" : "Disaggregated";
+      }
+
+      function renderModeCard(mode, allCandidates) {
+        const candidates = allCandidates.filter((candidate) => candidate.mode === mode);
+        const feasible = candidates.filter((candidate) => candidate.meets_sla === true &&
+          Number.isFinite(Number(candidate.predicted_tokens_per_second)) &&
+          Number.isFinite(Number(candidate.predicted_request_latency_ms)));
+        const countElement = document.querySelector(`#${mode}-comparison-count`);
+        const feasibleElement = document.querySelector(`#${mode}-comparison-feasible`);
+        const throughputElement = document.querySelector(`#${mode}-comparison-throughput`);
+        const latencyElement = document.querySelector(`#${mode}-comparison-latency`);
+        const statusElement = document.querySelector(`#${mode}-comparison-status`);
+        countElement.textContent = String(candidates.length || "Not reported");
+        feasibleElement.textContent = String(feasible.length);
+
+        if (feasible.length === 0) {
+          throughputElement.textContent = "No SLA-feasible candidates";
+          latencyElement.textContent = "No SLA-feasible candidates";
+          statusElement.textContent = candidates.length === 0
+            ? `This run did not return ${modeDisplayName(mode).toLowerCase()} candidates.`
+            : `No ${modeDisplayName(mode).toLowerCase()} candidate meets both requested targets.`;
+          return { mode, candidates, feasible, bestThroughput: null, bestLatency: null };
+        }
+
+        const bestThroughput = feasible.reduce((best, candidate) => {
+          return Number(candidate.predicted_tokens_per_second) > Number(best.predicted_tokens_per_second)
+            ? candidate
+            : best;
+        });
+        const bestLatency = feasible.reduce((best, candidate) => {
+          return Number(candidate.predicted_request_latency_ms) < Number(best.predicted_request_latency_ms)
+            ? candidate
+            : best;
+        });
+        throughputElement.textContent = `${formatMetric(bestThroughput.predicted_tokens_per_second)} tokens/s`;
+        latencyElement.textContent = `${formatMetric(bestLatency.predicted_request_latency_ms)} ms`;
+        statusElement.textContent = `${feasible.length} of ${candidates.length} candidates meet both requested targets.`;
+        return { mode, candidates, feasible, bestThroughput, bestLatency };
+      }
+
+      function renderModeComparison(results) {
+        const allCandidates = Array.isArray(results.candidates) ? results.candidates : [];
+        const summaries = [
+          renderModeCard("agg", allCandidates),
+          renderModeCard("disagg", allCandidates)
+        ];
+        const available = summaries.filter((summary) => summary.candidates.length > 0);
+        const feasible = summaries.filter((summary) => summary.feasible.length > 0);
+        if (available.length < 2) {
+          comparisonSummary.textContent = "Comparison is incomplete because only one result mode was returned.";
+        } else if (feasible.length === 0) {
+          comparisonSummary.textContent = "Neither result mode returned an SLA-feasible candidate; validate the estimates with real benchmarks.";
+        } else if (feasible.length === 1) {
+          comparisonSummary.textContent = `${modeDisplayName(feasible[0].mode)} is the only mode with an SLA-feasible candidate; validate the estimate with a real benchmark.`;
+        } else {
+          const [aggregate, disaggregated] = summaries;
+          const throughputWinner = Number(aggregate.bestThroughput.predicted_tokens_per_second) >= Number(disaggregated.bestThroughput.predicted_tokens_per_second)
+            ? aggregate
+            : disaggregated;
+          const latencyWinner = Number(aggregate.bestLatency.predicted_request_latency_ms) <= Number(disaggregated.bestLatency.predicted_request_latency_ms)
+            ? aggregate
+            : disaggregated;
+          comparisonSummary.textContent = `Among SLA-feasible candidates, ${modeDisplayName(throughputWinner.mode).toLowerCase()} has the higher predicted throughput (${formatMetric(throughputWinner.bestThroughput.predicted_tokens_per_second)} tokens/s), while ${modeDisplayName(latencyWinner.mode).toLowerCase()} has the lower predicted request latency (${formatMetric(latencyWinner.bestLatency.predicted_request_latency_ms)} ms). Validate both estimates with a real benchmark.`;
+        }
+        comparisonPanel.hidden = false;
+      }
+
       function artifactHref(runId, artifact) {
         if (
           typeof artifact !== "string" ||
@@ -361,6 +468,7 @@
           resultsBody.append(row);
         }
         renderParetoChart(results);
+        renderModeComparison(results);
 
         artifactList.replaceChildren();
         for (const artifact of Array.isArray(artifacts) ? artifacts : []) {
@@ -441,6 +549,8 @@
         resultsBody.replaceChildren();
         paretoChart.replaceChildren();
         paretoFrontierList.replaceChildren();
+        comparisonPanel.hidden = true;
+        comparisonSummary.replaceChildren();
         artifactList.replaceChildren();
         const values = Object.fromEntries(new FormData(form));
         values.total_gpus = Number(values.total_gpus);

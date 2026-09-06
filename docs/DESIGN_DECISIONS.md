@@ -30,6 +30,14 @@ This adds no API, persistence, execution, or dependency changes. The chart is
 an explanation aid for model-based estimates, not a benchmark or deployment
 recommendation.
 
+BONUS-002 keeps the aggregate/disaggregated comparison in the browser and
+reuses the existing `mode` field in the ranked result contract. It summarizes
+each mode's candidate count, SLA-feasible count, highest predicted throughput,
+and lowest predicted request latency, scoped to candidates meeting both
+requested targets. Missing modes and no-SLA-feasible cases are shown explicitly.
+This adds no API, persistence, execution, or dependency changes; the summary is
+an explanation aid for model-based estimates, not a deployment recommendation.
+
 ## Approval protocol
 
 The architecture owner reviews each record and either marks it **Accepted** or requests changes. If implementation evidence invalidates a decision, stop, explain the new alternatives, and create a superseding ADR. Never silently change an accepted choice.

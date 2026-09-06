@@ -44,7 +44,7 @@ The roadmap follows assignment risk, not feature breadth. Do not begin Bonus wor
 ## Bonus — In progress
 
 - [x] Pareto frontier visualization
-- [ ] Aggregated vs disaggregated comparison
+- [x] Aggregated vs disaggregated comparison
 - [ ] Deterministic cache
 - [ ] Run history
 - [ ] Multi-user awareness
