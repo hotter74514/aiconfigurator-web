@@ -37,7 +37,7 @@ The roadmap follows assignment risk, not feature breadth. Do not begin Bonus wor
 
 ## P5 — Submission quality
 
-- [ ] Complete README: clean checkout, architecture, API, decisions, limitations, production evolution
+- [x] Complete README: clean checkout, architecture, API, decisions, limitations, production evolution
 - [ ] Verify the complete demo path
 - [ ] Preserve incremental, reviewable Conventional Commits
 
