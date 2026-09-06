@@ -16,6 +16,7 @@ dependencies = [
   "opentelemetry-exporter-prometheus>=0.65b0,<0.66",
   "opentelemetry-instrumentation-fastapi>=0.65b0,<0.66",
   "opentelemetry-sdk>=1.44,<1.45",
+  "prometheus-client>=0.22,<1",
   "uvicorn[standard]>=0.34,<1",
 ]
 

@@ -5,6 +5,7 @@ from threading import Lock
 from typing import Any
 
 from opentelemetry import metrics, trace
+from opentelemetry.context import Context
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import (
     OTLPMetricExporter,
 )
@@ -17,7 +18,15 @@ from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.trace import Span
+from opentelemetry.trace import Span, format_trace_id
+from prometheus_client import Histogram
+
+
+_TRACE_RUN_DURATION = Histogram(
+    "portal_trace_run_duration_seconds",
+    "Completed Portal run duration with a trace exemplar",
+    labelnames=("status",),
+)
 
 TRACEPARENT_ENV = "TRACEPARENT"
 TRACESTATE_ENV = "TRACESTATE"
@@ -93,12 +102,18 @@ class PortalTelemetry:
         *,
         duration_ms: int | None,
         active: bool,
+        context: Context | None = None,
     ) -> None:
         self.runs_total.add(1, {"status": status})
         if active:
             self.active_runs.add(-1)
         if duration_ms is not None:
-            self.run_duration.record(duration_ms / 1000)
+            duration_seconds = duration_ms / 1000
+            self.run_duration.record(duration_seconds)
+            _TRACE_RUN_DURATION.labels(status=status).observe(
+                duration_seconds,
+                exemplar=_trace_exemplar(context),
+            )
 
     def record_artifact_bytes(self, total_bytes: int) -> None:
         if total_bytes > 0:
@@ -197,3 +212,13 @@ def _signal_uses_otlp(signal_name: str) -> bool:
         or base_endpoint
         or "otlp" in {value.strip().lower() for value in exporters.split(",")}
     )
+
+
+def _trace_exemplar(context: Context | None) -> dict[str, str] | None:
+    """Return a Prometheus exemplar for the active run trace, when sampled."""
+
+    span = trace.get_current_span(context)
+    span_context = span.get_span_context()
+    if not span_context.is_valid or not span_context.trace_flags.sampled:
+        return None
+    return {"trace_id": format_trace_id(span_context.trace_id)}

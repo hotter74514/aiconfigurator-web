@@ -1,3 +1,4 @@
+import re
 import sys
 import time
 from pathlib import Path
@@ -32,7 +33,9 @@ def test_metrics_endpoint_exposes_http_and_queue_metrics(tmp_path: Path) -> None
         response = client.get("/metrics")
 
         assert response.status_code == 200
-        assert response.headers["content-type"].startswith("text/plain")
+        assert response.headers["content-type"].startswith(
+            "application/openmetrics-text"
+        )
         assert "http_server_duration_milliseconds" in response.text
         assert "portal_queue_depth" in response.text
         queue_lines = [
@@ -84,6 +87,42 @@ def test_completed_run_records_artifact_bytes(tmp_path: Path) -> None:
     ]
     assert len(artifact_lines) == 1
     assert float(artifact_lines[0].rsplit(" ", 1)[1]) > 0
+
+
+def test_completed_run_exposes_trace_id_exemplar(tmp_path: Path) -> None:
+    def successful_runner(
+        _: RunRequest, save_dir: Path, __
+    ) -> ExecutionResult:
+        result_dir = save_dir / "agg"
+        result_dir.mkdir(parents=True)
+        (result_dir / "best_config_topn.csv").write_text(
+            "model,ttft,tpot,request_latency,tokens/s,tokens/s/gpu,"
+            "num_total_gpus,concurrency,backend,system\n"
+            "m,1,1,1,1,1,1,1,b,s\n",
+            encoding="utf-8",
+        )
+        return ExecutionResult(0, "", "", 1)
+
+    service = RunManager(
+        runner=successful_runner,
+        artifact_root=tmp_path / "runs",
+    )
+    try:
+        run = service.submit(make_request())
+        for _ in range(200):
+            current = service.get(run.id)
+            if current is not None and current.status == "completed":
+                break
+            time.sleep(0.01)
+        metrics = TestClient(create_app(service)).get("/metrics").text
+    finally:
+        service.shutdown()
+
+    assert re.search(
+        r'portal_trace_run_duration_seconds_bucket\{[^}]*\} '
+        r'[^#]+# \{trace_id="[0-9a-f]{32}"\}',
+        metrics,
+    )
 
 
 def test_subprocess_wrapper_propagates_parent_trace_id(
