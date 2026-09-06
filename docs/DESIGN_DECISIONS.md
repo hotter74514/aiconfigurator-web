@@ -17,7 +17,7 @@ This index tracks the decisions that must be defensible in the interview. The de
 | [011](decisions/011-timeout-cancellation.md) | Timeout, cancellation, and subprocess cleanup | Accepted |
 | [012](decisions/012-local-observability-stack.md) | Minikube local observability stack | Accepted |
 | [013](decisions/013-loki-alloy-log-forwarding.md) | Direct Alloy-to-Loki log forwarding | Accepted |
-| [014](decisions/014-run-history.md) | Bounded process-local run history | Proposed |
+| [014](decisions/014-run-history.md) | Bounded process-local run history | Accepted |
 
 README summaries should link to the ADRs rather than duplicate them.
 
@@ -43,6 +43,11 @@ ADR-008 is accepted for the deterministic cache milestone. The cache remains
 local to one Portal process, bounded by entry count, and ephemeral across
 restarts; its key includes the canonical request, AIConfigurator version, result
 model version, and runner image identity.
+
+ADR-014 is accepted for the run history milestone. Recent completed and failed
+runs are retained in a bounded process-local index and exposed newest-first by
+`GET /api/runs`; history and artifact availability are not durable across
+process or Pod restarts.
 
 ## Approval protocol
 

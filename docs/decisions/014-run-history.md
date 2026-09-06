@@ -72,4 +72,4 @@ cross-team access.
 
 ## Status
 
-**Proposed — architecture owner approval required.**
+**Accepted — architecture owner approval recorded on 2026-09-06.**

@@ -65,3 +65,17 @@ def test_index_contains_aggregate_disaggregated_comparison_contract() -> None:
     assert "renderModeCard" in response.text
     assert "renderModeComparison" in response.text
     assert "Comparison is incomplete" in response.text
+
+
+def test_index_contains_recent_local_history_contract() -> None:
+    client = TestClient(create_app(RunManager(start_workers=False)))
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'id="history-panel"' in response.text
+    assert 'id="history-body"' in response.text
+    assert 'id="history-status"' in response.text
+    assert "Recent local history" in response.text
+    assert "loadHistory" in response.text
+    assert "artifacts_unavailable" in response.text

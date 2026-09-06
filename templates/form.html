@@ -17,6 +17,11 @@
       input { border: 1px solid #9aa7b2; border-radius: .25rem; font: inherit; padding: .6rem; }
       button { background: #1459a6; border: 0; border-radius: .25rem; color: #fff; cursor: pointer; font: inherit; padding: .7rem 1rem; }
       button:disabled { cursor: wait; opacity: .7; }
+      #history-panel { border-top: 1px solid #d5dce2; margin-top: 2rem; padding-top: 1.5rem; }
+      #history-status { line-height: 1.5; }
+      #history-table button { padding: .45rem .7rem; }
+      .history-failed { color: #a12622; font-weight: 600; }
+      .history-unavailable { color: #8a5a00; }
       #submit-status { min-height: 1.5rem; }
       #submit-status[data-state="error"] { color: #a12622; }
       #submit-status[data-state="completed"] { color: #176b38; }
@@ -80,6 +85,27 @@
         <button type="submit">Submit configuration run</button>
         <p id="submit-status" role="status" aria-live="polite"></p>
       </form>
+      <section id="history-panel" aria-labelledby="history-heading">
+        <h2 id="history-heading">Recent local history</h2>
+        <p>Recent completed and failed runs are kept in this process only. A restart clears this history; artifact links can also expire after the 24-hour local retention window.</p>
+        <p id="history-status" role="status" aria-live="polite">Loading recent runs…</p>
+        <div class="table-wrap">
+          <table id="history-table" hidden>
+            <caption class="visually-hidden">Recent local serving configuration runs</caption>
+            <thead>
+              <tr>
+                <th scope="col">Status</th>
+                <th scope="col">Model / system</th>
+                <th scope="col">Constraints</th>
+                <th scope="col">Created</th>
+                <th scope="col">Artifacts</th>
+                <th scope="col">Action</th>
+              </tr>
+            </thead>
+            <tbody id="history-body"></tbody>
+          </table>
+        </div>
+      </section>
       <section id="results-panel" hidden aria-labelledby="results-heading">
         <h2 id="results-heading">Ranked configurations</h2>
         <p class="warning"><strong>Estimate warning:</strong> predictions must be validated with representative real benchmarks before deployment.</p>
@@ -155,6 +181,9 @@
       const form = document.querySelector("#run-form");
       const status = document.querySelector("#submit-status");
       const submitButton = form.querySelector("button");
+      const historyStatus = document.querySelector("#history-status");
+      const historyTable = document.querySelector("#history-table");
+      const historyBody = document.querySelector("#history-body");
       const resultsPanel = document.querySelector("#results-panel");
       const resultsBody = document.querySelector("#results-body");
       const artifactList = document.querySelector("#artifact-list");
@@ -195,6 +224,11 @@
           return "—";
         }
         return number.toLocaleString(undefined, { maximumFractionDigits: 2 });
+      }
+
+      function formatTimestamp(value) {
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
       }
 
       function isParetoDominated(candidate, candidates) {
@@ -447,6 +481,17 @@
         return `/api/runs/${encodeURIComponent(runId)}/artifacts/${encodedPath}`;
       }
 
+      function clearResults() {
+        resultsPanel.hidden = true;
+        paretoPanel.hidden = true;
+        resultsBody.replaceChildren();
+        paretoChart.replaceChildren();
+        paretoFrontierList.replaceChildren();
+        comparisonPanel.hidden = true;
+        comparisonSummary.replaceChildren();
+        artifactList.replaceChildren();
+      }
+
       function renderResults(runId, results, artifacts) {
         if (!results || !Array.isArray(results.candidates) || results.candidates.length === 0) {
           throw new Error("The run returned no ranked configurations.");
@@ -488,6 +533,85 @@
         resultsPanel.hidden = false;
       }
 
+      function loadHistoryItem(item) {
+        cancelPolling();
+        if (item.status === "completed") {
+          try {
+            clearResults();
+            renderResults(item.id, item.results, item.artifacts);
+            if (item.artifacts_unavailable) {
+              const notice = document.createElement("li");
+              notice.className = "history-unavailable";
+              notice.textContent = "Some artifacts are unavailable because local retention expired.";
+              artifactList.prepend(notice);
+            }
+            setStatus(`Loaded historical run ${item.id}.`, "completed", false);
+          } catch (error) {
+            setStatus(error.message, "error", false);
+          }
+          submitButton.disabled = false;
+          return;
+        }
+        clearResults();
+        setStatus(
+          `Historical run ${item.id} failed: ${item.error || "unknown error"}`,
+          "error",
+          false
+        );
+        submitButton.disabled = false;
+      }
+
+      function renderHistory(items) {
+        historyBody.replaceChildren();
+        if (!Array.isArray(items) || items.length === 0) {
+          historyTable.hidden = true;
+          historyStatus.textContent = "No recent local runs.";
+          return;
+        }
+
+        for (const item of items) {
+          const row = document.createElement("tr");
+          const statusCell = appendCell(row, item.status);
+          if (item.status === "failed") {
+            statusCell.className = "history-failed";
+          }
+          const request = item.request || {};
+          appendCell(row, `${request.model || "Unknown model"} / ${request.system || "Unknown system"}`);
+          appendCell(row, `${formatMetric(request.total_gpus)} GPUs · TTFT ${formatMetric(request.ttft)} ms · TPOT ${formatMetric(request.tpot)} ms`);
+          appendCell(row, formatTimestamp(item.created_at));
+          const artifactCell = appendCell(row, Array.isArray(item.artifacts) && item.artifacts.length > 0
+            ? `${item.artifacts.length} available`
+            : item.artifacts_unavailable ? "Unavailable (expired)" : "None");
+          if (item.artifacts_unavailable) {
+            artifactCell.className = "history-unavailable";
+          }
+          const actionCell = document.createElement("td");
+          const action = document.createElement("button");
+          action.type = "button";
+          action.textContent = item.status === "completed" ? "View results" : "View failure";
+          action.addEventListener("click", () => loadHistoryItem(item));
+          actionCell.append(action);
+          row.append(actionCell);
+          historyBody.append(row);
+        }
+        historyTable.hidden = false;
+        historyStatus.textContent = `${items.length} recent local run${items.length === 1 ? "" : "s"}.`;
+      }
+
+      async function loadHistory() {
+        try {
+          const response = await fetch("/api/runs");
+          const body = await response.json();
+          if (!response.ok) {
+            throw new Error(body.detail || "Recent run history could not be loaded.");
+          }
+          renderHistory(body);
+        } catch (error) {
+          historyTable.hidden = true;
+          historyStatus.textContent = error.message;
+        }
+      }
+
       async function pollRun(runId, generation) {
         if (generation !== pollGeneration) {
           return;
@@ -520,6 +644,7 @@
             renderResults(runId, body.results, body.artifacts);
             setStatus(`Run ${runId} completed. Results are ready.`, "completed", false);
             submitButton.disabled = false;
+            loadHistory();
             return;
           }
           if (body.status === "failed") {
@@ -529,6 +654,7 @@
               false
             );
             submitButton.disabled = false;
+            loadHistory();
             return;
           }
           throw new Error("The run returned an unknown status.");
@@ -544,14 +670,7 @@
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         cancelPolling();
-        resultsPanel.hidden = true;
-        paretoPanel.hidden = true;
-        resultsBody.replaceChildren();
-        paretoChart.replaceChildren();
-        paretoFrontierList.replaceChildren();
-        comparisonPanel.hidden = true;
-        comparisonSummary.replaceChildren();
-        artifactList.replaceChildren();
+        clearResults();
         const values = Object.fromEntries(new FormData(form));
         values.total_gpus = Number(values.total_gpus);
         values.ttft = Number(values.ttft);
@@ -577,6 +696,8 @@
           setStatus(error.message, "error", false);
         }
       });
+
+      loadHistory();
     </script>
   </body>
 </html>

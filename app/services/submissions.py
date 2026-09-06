@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from collections.abc import Callable
 import logging
 import os
@@ -10,7 +11,13 @@ from opentelemetry import context as otel_context
 from opentelemetry.trace import Span, Status, StatusCode, set_span_in_context
 
 from app.domain.results import RankedResults
-from app.domain.runs import RunRequest, RunStatus, StoredRun, new_stored_run
+from app.domain.runs import (
+    RunHistoryItem,
+    RunRequest,
+    RunStatus,
+    StoredRun,
+    new_stored_run,
+)
 from app.services.artifacts import ArtifactStore
 from app.services.cache import (
     DEFAULT_CACHE_SIZE,
@@ -46,6 +53,7 @@ class RunManagerUnavailableError(RuntimeError):
 
 Runner = Callable[[RunRequest, Path, Event], ExecutionResult]
 LOGGER = logging.getLogger("aiconfigurator.portal.runs")
+DEFAULT_HISTORY_SIZE = 20
 
 
 class RunManager:
@@ -62,15 +70,20 @@ class RunManager:
         cache: ResultCache | None = None,
         cache_identity: CacheIdentity | None = None,
         cache_size: int = DEFAULT_CACHE_SIZE,
+        history_size: int = DEFAULT_HISTORY_SIZE,
     ) -> None:
         configure_logging()
         if worker_count not in (1, 2):
             raise ValueError("worker_count must be 1 or 2")
         if queue_size < 1:
             raise ValueError("queue_size must be positive")
+        if history_size < 1:
+            raise ValueError("history_size must be positive")
 
         self._lock = Lock()
         self._runs: dict[UUID, StoredRun] = {}
+        self._history_ids: OrderedDict[UUID, None] = OrderedDict()
+        self._history_size = history_size
         self._queue: Queue[UUID] = Queue(maxsize=queue_size)
         self._runner = runner
         self._telemetry: PortalTelemetry = get_telemetry()
@@ -188,6 +201,42 @@ class RunManager:
         with self._lock:
             return len(self._runs)
 
+    def history(self) -> list[RunHistoryItem]:
+        """Return recent terminal runs, newest first, with live artifact links."""
+
+        with self._lock:
+            runs = [
+                self._runs[run_id].model_copy(deep=True)
+                for run_id in reversed(self._history_ids)
+                if run_id in self._runs
+            ]
+
+        history: list[RunHistoryItem] = []
+        for run in runs:
+            available_artifacts: list[str] = []
+            artifacts_unavailable = False
+            if run.status == "completed" and run.artifacts:
+                live_artifacts = set(self._artifacts.list_allowed(run.id))
+                available_artifacts = [
+                    name for name in run.artifacts if name in live_artifacts
+                ]
+                artifacts_unavailable = len(available_artifacts) != len(
+                    run.artifacts
+                )
+            history.append(
+                RunHistoryItem(
+                    id=run.id,
+                    status=run.status,
+                    request=run.request,
+                    created_at=run.created_at,
+                    error=run.error,
+                    results=run.results,
+                    artifacts=available_artifacts,
+                    artifacts_unavailable=artifacts_unavailable,
+                )
+            )
+        return history
+
     def readiness_error(self) -> str | None:
         with self._lock:
             if not self._accepting:
@@ -242,6 +291,7 @@ class RunManager:
                 updates["artifacts"] = artifacts
             updated = current.model_copy(update=updates)
             self._runs[run_id] = updated
+            self._record_history_locked(updated)
             return updated
 
     def mark_running(self, run_id: UUID) -> StoredRun:
@@ -287,6 +337,7 @@ class RunManager:
                             "error": "Run cancelled during service shutdown",
                         }
                     )
+                    self._record_history_locked(self._runs[run_id])
                     cleanup_ids.append(run_id)
                     queued_telemetry.append(run_id)
             active_cancellations = list(self._active_cancellations.values())
@@ -310,6 +361,7 @@ class RunManager:
                             "error": "Run cancelled during service shutdown",
                         }
                     )
+                    self._record_history_locked(self._runs[run_id])
                     cleanup_ids.append(run_id)
                     running_telemetry.append(run_id)
         for run_id in running_telemetry:
@@ -325,6 +377,17 @@ class RunManager:
         if run is None or run.status != "completed" or name not in run.artifacts:
             raise RunNotFoundError(str(run_id))
         return self._artifacts.resolve_allowed(run_id, name)
+
+    def _record_history_locked(self, run: StoredRun) -> None:
+        if run.status not in {"completed", "failed"}:
+            return
+        self._history_ids[run.id] = None
+        self._history_ids.move_to_end(run.id)
+        while len(self._history_ids) > self._history_size:
+            evicted_id, _ = self._history_ids.popitem(last=False)
+            evicted = self._runs.get(evicted_id)
+            if evicted is not None and evicted.status in {"completed", "failed"}:
+                del self._runs[evicted_id]
 
     def _worker_loop(self) -> None:
         while not self._stop.is_set():

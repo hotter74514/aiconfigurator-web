@@ -145,6 +145,89 @@ def test_get_run_returns_queued_status_after_submission() -> None:
     assert status_response.json() == {"id": run_id, "status": "queued"}
 
 
+def test_get_runs_returns_recent_terminal_history_newest_first(tmp_path) -> None:
+    service = RunManager(
+        start_workers=False,
+        artifact_root=tmp_path / "runs",
+        history_size=2,
+    )
+    client = TestClient(create_app(service))
+    first = service.submit(
+        RunRequest(
+            model="first-model",
+            system="h200_sxm",
+            total_gpus=8,
+            ttft=100,
+            tpot=10,
+        )
+    )
+    service.mark_running(first.id)
+    service.mark_completed(first.id)
+    second = service.submit(
+        RunRequest(
+            model="second-model",
+            system="h100_sxm",
+            total_gpus=4,
+            ttft=200,
+            tpot=20,
+        )
+    )
+    service.mark_running(second.id)
+    service.mark_failed(second.id, "configuration failed")
+
+    response = client.get("/api/runs")
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()] == [
+        str(second.id),
+        str(first.id),
+    ]
+    assert response.json()[0]["status"] == "failed"
+    assert response.json()[0]["error"] == "configuration failed"
+    assert response.json()[0]["request"]["model"] == "second-model"
+
+
+def test_get_runs_returns_empty_history_without_terminal_runs() -> None:
+    client, _ = make_client()
+
+    response = client.get("/api/runs")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_get_runs_marks_expired_artifacts_unavailable(tmp_path) -> None:
+    service = RunManager(
+        start_workers=False,
+        artifact_root=tmp_path / "runs",
+    )
+    run = service.submit(
+        RunRequest(
+            model="Qwen/Qwen3-32B-FP8",
+            system="h200_sxm",
+            total_gpus=32,
+            ttft=2000,
+            tpot=30,
+        )
+    )
+    service.mark_running(run.id)
+    artifact = service.artifact_dir(run.id) / "agg" / "k8s_deploy.yaml"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_text("apiVersion: apps/v1\n", encoding="utf-8")
+    service.mark_completed(
+        run.id,
+        artifacts=["agg/k8s_deploy.yaml"],
+    )
+    artifact.unlink()
+    client = TestClient(create_app(service))
+
+    response = client.get("/api/runs")
+
+    assert response.status_code == 200
+    assert response.json()[0]["artifacts"] == []
+    assert response.json()[0]["artifacts_unavailable"] is True
+
+
 def test_get_run_returns_running_and_completed_transitions() -> None:
     service = RunManager(start_workers=False)
     client = TestClient(create_app(service))

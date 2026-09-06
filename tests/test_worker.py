@@ -111,6 +111,43 @@ def test_worker_marks_success_and_captures_stdout() -> None:
     assert stored.artifacts == ["agg/best_config_topn.csv"]
 
 
+def test_history_is_bounded_and_eviction_keeps_artifacts(tmp_path: Path) -> None:
+    manager = RunManager(
+        start_workers=False,
+        artifact_root=tmp_path / "runs",
+        history_size=1,
+    )
+    first = manager.submit(make_request())
+    manager.mark_running(first.id)
+    first_artifact = manager.artifact_dir(first.id) / "agg" / "k8s_deploy.yaml"
+    first_artifact.parent.mkdir(parents=True)
+    first_artifact.write_text("apiVersion: apps/v1\n", encoding="utf-8")
+    manager.mark_completed(
+        first.id,
+        execution=ExecutionResult(0, "", "", 1),
+        artifacts=["agg/k8s_deploy.yaml"],
+    )
+
+    second = manager.submit(make_request())
+    manager.mark_running(second.id)
+    manager.mark_failed(second.id, "configuration failed")
+
+    assert manager.get(first.id) is None
+    history = manager.history()
+    assert [item.id for item in history] == [second.id]
+    assert manager.artifact_dir(first.id).is_dir()
+
+
+def test_history_excludes_queued_and_running_runs() -> None:
+    manager = RunManager(start_workers=False, history_size=1)
+    queued = manager.submit(make_request())
+
+    assert manager.history() == []
+
+    manager.mark_running(queued.id)
+    assert manager.history() == []
+
+
 def test_worker_serves_identical_request_from_cache(tmp_path: Path) -> None:
     calls = 0
 

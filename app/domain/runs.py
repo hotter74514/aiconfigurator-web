@@ -42,6 +42,19 @@ class RunStatusResponse(BaseModel):
     artifacts: list[str] | None = None
 
 
+class RunHistoryItem(BaseModel):
+    """A recent terminal run exposed by the process-local history API."""
+
+    id: UUID
+    status: Literal["completed", "failed"]
+    request: RunRequest
+    created_at: datetime
+    error: str | None = None
+    results: RankedResults | None = None
+    artifacts: list[str] = Field(default_factory=list)
+    artifacts_unavailable: bool = False
+
+
 class StoredRun(BaseModel):
     id: UUID
     request: RunRequest

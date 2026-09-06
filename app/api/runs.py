@@ -3,7 +3,12 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import FileResponse
 
-from app.domain.runs import RunAcceptedResponse, RunRequest, RunStatusResponse
+from app.domain.runs import (
+    RunAcceptedResponse,
+    RunHistoryItem,
+    RunRequest,
+    RunStatusResponse,
+)
 from app.services.artifacts import ArtifactNotFoundError
 from app.services.submissions import (
     QueueCapacityError,
@@ -36,6 +41,14 @@ def build_runs_router(service: RunManager) -> APIRouter:
                 headers={"Retry-After": "1"},
             ) from exc
         return RunAcceptedResponse(id=run.id, status=run.status)
+
+    @router.get(
+        "/api/runs",
+        response_model=list[RunHistoryItem],
+        response_model_exclude_none=True,
+    )
+    def list_runs() -> list[RunHistoryItem]:
+        return service.history()
 
     @router.get(
         "/api/runs/{run_id}",

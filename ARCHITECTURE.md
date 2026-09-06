@@ -2,7 +2,7 @@
 
 ## Status
 
-The repository now contains the TASK-013/014 API boundary, TASK-015 bounded worker execution, TASK-016 structured-result parser/ranker, TASK-017 ephemeral artifact serving, the TASK-020 plain HTML/Jinja2 form, TASK-021 status polling, TASK-022 ranked-result/artifact presentation, TASK-030 queue backpressure, TASK-031 timeout/cancellation cleanup, TASK-032 separate liveness/readiness probes, TASK-033 OpenTelemetry traces and focused metrics, TASK-034 structured JSON logs with run correlation, TASK-040 Linux/amd64 Docker packaging, TASK-041 local Kubernetes Deployment/Service manifests, TASK-042 measured Portal resource requests/limits, TASK-043 Portal probe and rollout tuning, TASK-045 Tempo restart hardening, BONUS-001 frontend Pareto frontier visualization, and BONUS-002 aggregate/disaggregated comparison. BONUS-003 deterministic caching is governed by accepted ADR-008 and is in progress. The following is the deliberately small candidate architecture for the assignment. Each material choice must be accepted in the corresponding ADR before implementation.
+The repository now contains the TASK-013/014 API boundary, TASK-015 bounded worker execution, TASK-016 structured-result parser/ranker, TASK-017 ephemeral artifact serving, the TASK-020 plain HTML/Jinja2 form, TASK-021 status polling, TASK-022 ranked-result/artifact presentation, TASK-030 queue backpressure, TASK-031 timeout/cancellation cleanup, TASK-032 separate liveness/readiness probes, TASK-033 OpenTelemetry traces and focused metrics, TASK-034 structured JSON logs with run correlation, TASK-040 Linux/amd64 Docker packaging, TASK-041 local Kubernetes Deployment/Service manifests, TASK-042 measured Portal resource requests/limits, TASK-043 Portal probe and rollout tuning, TASK-045 Tempo restart hardening, BONUS-001 frontend Pareto frontier visualization, BONUS-002 aggregate/disaggregated comparison, BONUS-003 deterministic caching, and BONUS-004 bounded process-local run history. The following is the deliberately small candidate architecture for the assignment. Each material choice must be accepted in the corresponding ADR before implementation.
 
 ## Candidate Shape
 
@@ -52,9 +52,11 @@ identity, restores artifacts into each new ephemeral run directory, and is lost
 on restart. It does not provide cross-replica deduplication or durable cache
 retention.
 
-Run history is not yet implemented; its proposed bounded process-local design
-is recorded in ADR-014 and requires architecture-owner approval before code or
-API changes.
+The accepted run history is a bounded, read-only process-local index of recent
+completed and failed runs. `GET /api/runs` returns newest-first records; an
+evicted record loses only its in-memory metadata, while its artifact directory
+is left to the existing TTL cleanup. Expired artifact links are reported as
+unavailable, and restart or Pod replacement still clears history.
 
 ## Production Evolution
 

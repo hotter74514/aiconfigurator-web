@@ -59,6 +59,7 @@ docs:
 	@test -f docs/task-054-commit-history.md
 	@test -f docs/task-055-pareto.md
 	@test -f docs/task-057-cache.md
+	@test -f docs/task-058-run-history.md
 	@test -x scripts/container-check.sh
 	@test -f k8s/kustomization.yaml
 	@test -f k8s/deployment.yaml
