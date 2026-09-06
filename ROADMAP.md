@@ -41,9 +41,9 @@ The roadmap follows assignment risk, not feature breadth. Do not begin Bonus wor
 - [x] Verify the complete demo path
 - [x] Preserve incremental, reviewable Conventional Commits
 
-## Bonus — Deferred
+## Bonus — In progress
 
-- [ ] Pareto frontier visualization
+- [x] Pareto frontier visualization
 - [ ] Aggregated vs disaggregated comparison
 - [ ] Deterministic cache
 - [ ] Run history

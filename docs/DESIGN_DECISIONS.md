@@ -20,6 +20,16 @@ This index tracks the decisions that must be defensible in the interview. The de
 
 README summaries should link to the ADRs rather than duplicate them.
 
+## Bonus implementation notes
+
+BONUS-001 keeps the Pareto visualization in the browser and reuses the existing
+ranked result contract. It compares predicted request latency (minimize) with
+predicted throughput (maximize), highlights non-dominated candidates, and keeps
+the ranked table as the source for SLA ordering and complete candidate details.
+This adds no API, persistence, execution, or dependency changes. The chart is
+an explanation aid for model-based estimates, not a benchmark or deployment
+recommendation.
+
 ## Approval protocol
 
 The architecture owner reviews each record and either marks it **Accepted** or requests changes. If implementation evidence invalidates a decision, stop, explain the new alternatives, and create a superseding ADR. Never silently change an accepted choice.

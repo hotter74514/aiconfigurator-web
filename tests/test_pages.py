@@ -35,3 +35,17 @@ def test_index_contains_status_polling_and_result_rendering() -> None:
     assert 'id="artifact-list"' in response.text
     assert "renderResults" in response.text
     assert "Estimate warning" in response.text
+
+
+def test_index_contains_pareto_frontier_visualization_contract() -> None:
+    client = TestClient(create_app(RunManager(start_workers=False)))
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'id="pareto-panel"' in response.text
+    assert 'id="pareto-chart"' in response.text
+    assert 'id="pareto-frontier-list"' in response.text
+    assert "Throughput vs. request latency" in response.text
+    assert "isParetoDominated" in response.text
+    assert "renderParetoChart" in response.text

@@ -28,6 +28,21 @@
       .sla-pass { color: #176b38; font-weight: 600; }
       .sla-fail { color: #a12622; font-weight: 600; }
       .artifact-list { line-height: 1.8; margin-bottom: 0; }
+      #pareto-panel { border-top: 1px solid #d5dce2; margin-top: 2rem; padding-top: 1.5rem; }
+      .pareto-wrap { overflow-x: auto; }
+      #pareto-chart { background: #fbfcfd; border: 1px solid #d5dce2; border-radius: .25rem; min-width: 42rem; width: 100%; }
+      .pareto-grid { stroke: #d5dce2; stroke-dasharray: 3 3; }
+      .pareto-axis { stroke: #52606d; stroke-width: 1.5; }
+      .pareto-axis-label, .pareto-tick-label { fill: #34404b; font-size: 12px; }
+      .pareto-frontier-path { fill: none; stroke: #1459a6; stroke-dasharray: 5 4; stroke-width: 2; }
+      .pareto-frontier-point { fill: #1459a6; stroke: #fff; stroke-width: 2; }
+      .pareto-dominated-point { fill: #9aa7b2; stroke: #fff; stroke-width: 2; }
+      .pareto-legend { display: flex; flex-wrap: wrap; gap: 1rem; list-style: none; padding: 0; }
+      .pareto-legend li { align-items: center; display: flex; gap: .4rem; }
+      .pareto-swatch { border-radius: 50%; display: inline-block; height: .75rem; width: .75rem; }
+      .pareto-swatch.frontier { background: #1459a6; }
+      .pareto-swatch.dominated { background: #9aa7b2; }
+      #pareto-frontier-list { line-height: 1.8; }
       .visually-hidden { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
     </style>
   </head>
@@ -78,6 +93,22 @@
             <tbody id="results-body"></tbody>
           </table>
         </div>
+        <section id="pareto-panel" hidden aria-labelledby="pareto-heading">
+          <h2 id="pareto-heading">Pareto frontier</h2>
+          <p>Throughput vs. request latency: points on the frontier have no other candidate that is both faster and higher-throughput.</p>
+          <ul class="pareto-legend" aria-label="Chart legend">
+            <li><span class="pareto-swatch frontier" aria-hidden="true"></span> Pareto frontier</li>
+            <li><span class="pareto-swatch dominated" aria-hidden="true"></span> Dominated candidate</li>
+          </ul>
+          <div class="pareto-wrap">
+            <svg id="pareto-chart" viewBox="0 0 760 420" role="img" aria-labelledby="pareto-chart-title pareto-chart-description">
+              <title id="pareto-chart-title">Throughput versus request latency</title>
+              <desc id="pareto-chart-description">The chart will appear when a run completes.</desc>
+            </svg>
+          </div>
+          <p id="pareto-summary" role="status"></p>
+          <ul id="pareto-frontier-list"></ul>
+        </section>
         <div id="artifacts-panel">
           <h3>Deployment artifacts</h3>
           <ul id="artifact-list" class="artifact-list"></ul>
@@ -91,6 +122,10 @@
       const resultsPanel = document.querySelector("#results-panel");
       const resultsBody = document.querySelector("#results-body");
       const artifactList = document.querySelector("#artifact-list");
+      const paretoPanel = document.querySelector("#pareto-panel");
+      const paretoChart = document.querySelector("#pareto-chart");
+      const paretoSummary = document.querySelector("#pareto-summary");
+      const paretoFrontierList = document.querySelector("#pareto-frontier-list");
       const POLL_INTERVAL_MS = 2000;
       let pollTimer = null;
       let pollGeneration = 0;
@@ -122,6 +157,175 @@
           return "—";
         }
         return number.toLocaleString(undefined, { maximumFractionDigits: 2 });
+      }
+
+      function isParetoDominated(candidate, candidates) {
+        return candidates.some((other) => {
+          if (other === candidate) {
+            return false;
+          }
+          const atLeastAsFast = other.predicted_request_latency_ms <= candidate.predicted_request_latency_ms;
+          const atLeastAsMuchThroughput = other.predicted_tokens_per_second >= candidate.predicted_tokens_per_second;
+          const strictlyBetter = other.predicted_request_latency_ms < candidate.predicted_request_latency_ms ||
+            other.predicted_tokens_per_second > candidate.predicted_tokens_per_second;
+          return atLeastAsFast && atLeastAsMuchThroughput && strictlyBetter;
+        });
+      }
+
+      function chartMetricRange(values) {
+        const minimum = Math.min(...values);
+        const maximum = Math.max(...values);
+        if (minimum === maximum) {
+          const padding = Math.max(Math.abs(minimum) * 0.1, 1);
+          return [Math.max(0, minimum - padding), maximum + padding];
+        }
+        const padding = (maximum - minimum) * 0.08;
+        return [Math.max(0, minimum - padding), maximum + padding];
+      }
+
+      function createSvgElement(name, attributes = {}) {
+        const element = document.createElementNS("http://www.w3.org/2000/svg", name);
+        for (const [attribute, value] of Object.entries(attributes)) {
+          element.setAttribute(attribute, String(value));
+        }
+        return element;
+      }
+
+      function renderParetoChart(results) {
+        const candidates = results.candidates.filter((candidate) => {
+          return Number.isFinite(Number(candidate.predicted_tokens_per_second)) &&
+            Number.isFinite(Number(candidate.predicted_request_latency_ms));
+        });
+        if (candidates.length === 0) {
+          throw new Error("The run returned no plottable configurations.");
+        }
+
+        const frontier = candidates
+          .filter((candidate) => !isParetoDominated(candidate, candidates))
+          .sort((left, right) => left.predicted_request_latency_ms - right.predicted_request_latency_ms);
+        const latencies = candidates.map((candidate) => candidate.predicted_request_latency_ms);
+        const throughputs = candidates.map((candidate) => candidate.predicted_tokens_per_second);
+        const [latencyMin, latencyMax] = chartMetricRange(latencies);
+        const [throughputMin, throughputMax] = chartMetricRange(throughputs);
+        const width = 760;
+        const height = 420;
+        const margin = { top: 24, right: 24, bottom: 58, left: 72 };
+        const plotWidth = width - margin.left - margin.right;
+        const plotHeight = height - margin.top - margin.bottom;
+        const xScale = (value) => margin.left +
+          ((value - latencyMin) / (latencyMax - latencyMin)) * plotWidth;
+        const yScale = (value) => height - margin.bottom -
+          ((value - throughputMin) / (throughputMax - throughputMin)) * plotHeight;
+
+        paretoChart.replaceChildren();
+        const title = createSvgElement("title", { id: "pareto-chart-title" });
+        title.textContent = "Throughput versus request latency";
+        paretoChart.append(title);
+        const description = createSvgElement("desc", { id: "pareto-chart-description" });
+        description.textContent = `${frontier.length} of ${candidates.length} candidates are on the Pareto frontier.`;
+        paretoChart.append(description);
+
+        for (let tick = 0; tick <= 4; tick += 1) {
+          const ratio = tick / 4;
+          const y = height - margin.bottom - ratio * plotHeight;
+          const throughput = throughputMin + ratio * (throughputMax - throughputMin);
+          paretoChart.append(createSvgElement("line", {
+            class: "pareto-grid",
+            x1: margin.left,
+            x2: width - margin.right,
+            y1: y,
+            y2: y
+          }));
+          const yLabel = createSvgElement("text", {
+            class: "pareto-tick-label",
+            "text-anchor": "end",
+            x: margin.left - 8,
+            y: y + 4
+          });
+          yLabel.textContent = formatMetric(throughput);
+          paretoChart.append(yLabel);
+
+          const x = margin.left + ratio * plotWidth;
+          const latency = latencyMin + ratio * (latencyMax - latencyMin);
+          paretoChart.append(createSvgElement("line", {
+            class: "pareto-grid",
+            x1: x,
+            x2: x,
+            y1: margin.top,
+            y2: height - margin.bottom
+          }));
+          const xLabel = createSvgElement("text", {
+            class: "pareto-tick-label",
+            "text-anchor": "middle",
+            x: x,
+            y: height - margin.bottom + 22
+          });
+          xLabel.textContent = formatMetric(latency);
+          paretoChart.append(xLabel);
+        }
+
+        paretoChart.append(createSvgElement("line", {
+          class: "pareto-axis",
+          x1: margin.left,
+          x2: width - margin.right,
+          y1: height - margin.bottom,
+          y2: height - margin.bottom
+        }));
+        paretoChart.append(createSvgElement("line", {
+          class: "pareto-axis",
+          x1: margin.left,
+          x2: margin.left,
+          y1: margin.top,
+          y2: height - margin.bottom
+        }));
+        const xAxisLabel = createSvgElement("text", {
+          class: "pareto-axis-label",
+          "text-anchor": "middle",
+          x: margin.left + plotWidth / 2,
+          y: height - 10
+        });
+        xAxisLabel.textContent = "Request latency (ms) — lower is better";
+        paretoChart.append(xAxisLabel);
+        const yAxisLabel = createSvgElement("text", {
+          class: "pareto-axis-label",
+          "text-anchor": "middle",
+          transform: `translate(16 ${margin.top + plotHeight / 2}) rotate(-90)`
+        });
+        yAxisLabel.textContent = "Throughput (tokens/s) — higher is better";
+        paretoChart.append(yAxisLabel);
+
+        if (frontier.length > 1) {
+          paretoChart.append(createSvgElement("polyline", {
+            class: "pareto-frontier-path",
+            points: frontier.map((candidate) => `${xScale(candidate.predicted_request_latency_ms)},${yScale(candidate.predicted_tokens_per_second)}`).join(" ")
+          }));
+        }
+
+        for (const candidate of candidates) {
+          const onFrontier = frontier.includes(candidate);
+          const point = createSvgElement("circle", {
+            class: onFrontier ? "pareto-frontier-point" : "pareto-dominated-point",
+            cx: xScale(candidate.predicted_request_latency_ms),
+            cy: yScale(candidate.predicted_tokens_per_second),
+            r: 6,
+            tabindex: 0,
+            role: "img",
+            "aria-label": `Rank ${candidate.rank}: ${formatMetric(candidate.predicted_tokens_per_second)} tokens/s, ${formatMetric(candidate.predicted_request_latency_ms)} ms request latency`
+          });
+          const pointTitle = createSvgElement("title");
+          pointTitle.textContent = `Rank ${candidate.rank} · ${candidate.mode} · ${formatMetric(candidate.predicted_tokens_per_second)} tokens/s · ${formatMetric(candidate.predicted_request_latency_ms)} ms`;
+          point.append(pointTitle);
+          paretoChart.append(point);
+        }
+
+        paretoSummary.textContent = `${frontier.length} of ${candidates.length} plotted candidates are on the Pareto frontier.`;
+        paretoFrontierList.replaceChildren();
+        for (const candidate of frontier) {
+          const item = document.createElement("li");
+          item.textContent = `Rank ${candidate.rank} (${candidate.mode}): ${formatMetric(candidate.predicted_tokens_per_second)} tokens/s at ${formatMetric(candidate.predicted_request_latency_ms)} ms request latency.`;
+          paretoFrontierList.append(item);
+        }
+        paretoPanel.hidden = false;
       }
 
       function artifactHref(runId, artifact) {
@@ -156,6 +360,7 @@
           slaCell.className = candidate.meets_sla ? "sla-pass" : "sla-fail";
           resultsBody.append(row);
         }
+        renderParetoChart(results);
 
         artifactList.replaceChildren();
         for (const artifact of Array.isArray(artifacts) ? artifacts : []) {
@@ -232,7 +437,10 @@
         event.preventDefault();
         cancelPolling();
         resultsPanel.hidden = true;
+        paretoPanel.hidden = true;
         resultsBody.replaceChildren();
+        paretoChart.replaceChildren();
+        paretoFrontierList.replaceChildren();
         artifactList.replaceChildren();
         const values = Object.fromEntries(new FormData(form));
         values.total_gpus = Number(values.total_gpus);
