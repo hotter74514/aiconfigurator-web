@@ -10,23 +10,23 @@ The roadmap follows assignment risk, not feature breadth. Do not begin Bonus wor
 
 ## P1 — Core execution
 
-- [ ] Accept and record architecture ADRs
-- [ ] Define the async run/status/artifact contracts
-- [ ] Implement the API, bounded worker, subprocess adapter, parser, and download path
+- [x] Accept and record architecture ADRs
+- [x] Define the async run/status/artifact contracts
+- [x] Implement the API, bounded worker, subprocess adapter, parser, and download path
 
 ## P2 — Minimal user journey
 
-- [ ] Submit model, GPU system/type, GPU count, TTFT, and TPOT
-- [ ] Poll status and show failure states
-- [ ] Show ranked throughput/latency results and estimate warning
+- [x] Submit model, GPU system/type, GPU count, TTFT, and TPOT
+- [x] Poll status and show failure states
+- [x] Show ranked throughput/latency results and estimate warning
 
 ## P3 — Platform behavior
 
-- [ ] Add bounded queue/backpressure and subprocess timeout/cleanup
-- [ ] Add distinct liveness/readiness probes
+- [x] Add bounded queue/backpressure and subprocess timeout/cleanup
+- [x] Add distinct liveness/readiness probes
 - [x] Add structured logs
 - [x] Add focused OpenTelemetry metrics and traces
-- [ ] Test failure modes and CPU contention assumptions
+- [x] Test failure modes and CPU contention assumptions
 
 ## P4 — Container and Kubernetes
 
@@ -39,7 +39,7 @@ The roadmap follows assignment risk, not feature breadth. Do not begin Bonus wor
 
 - [x] Complete README: clean checkout, architecture, API, decisions, limitations, production evolution
 - [x] Verify the complete demo path
-- [ ] Preserve incremental, reviewable Conventional Commits
+- [x] Preserve incremental, reviewable Conventional Commits
 
 ## Bonus — Deferred
 
