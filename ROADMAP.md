@@ -32,8 +32,8 @@ The roadmap follows assignment risk, not feature breadth. Do not begin Bonus wor
 
 - [x] Build the portal and AIConfigurator runtime image
 - [x] Add local Kubernetes Deployment and Service manifests
-- [ ] Measure CPU behavior and set requests/limits
-- [ ] Verify rolling-update and pod-restart limitations
+- [x] Measure CPU behavior and set requests/limits
+- [x] Verify rolling-update and pod-restart limitations
 
 ## P5 — Submission quality
 

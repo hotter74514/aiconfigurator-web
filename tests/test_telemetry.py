@@ -123,6 +123,22 @@ def test_completed_run_exposes_trace_id_exemplar(tmp_path: Path) -> None:
         r'[^#]+# \{trace_id="[0-9a-f]{32}"\}',
         metrics,
     )
+    assert (
+        'portal_trace_run_duration_seconds_bucket{le="12.5",status="completed"}'
+        in metrics
+    )
+    assert (
+        'portal_trace_run_duration_seconds_bucket{le="60.0",status="completed"}'
+        in metrics
+    )
+    assert re.search(
+        r'portal_run_duration_seconds_bucket\{[^}]*le="12.5"',
+        metrics,
+    )
+    assert re.search(
+        r'portal_run_duration_seconds_bucket\{[^}]*le="60.0"',
+        metrics,
+    )
 
 
 def test_subprocess_wrapper_propagates_parent_trace_id(

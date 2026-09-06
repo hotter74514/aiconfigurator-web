@@ -1,4 +1,7 @@
-# Tempo restart hardening report
+# TASK-045 Tempo restart hardening report
+
+This is an observability incident follow-up and is tracked independently from
+TASK-042 and TASK-043, which apply to the AIConfigurator Portal workload.
 
 ## Finding
 
