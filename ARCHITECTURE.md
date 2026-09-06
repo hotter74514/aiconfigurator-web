@@ -2,7 +2,7 @@
 
 ## Status
 
-The repository now contains the TASK-013/014 API boundary, TASK-015 bounded worker execution, TASK-016 structured-result parser/ranker, TASK-017 ephemeral artifact serving, the TASK-020 plain HTML/Jinja2 form, TASK-021 status polling, TASK-022 ranked-result/artifact presentation, TASK-030 queue backpressure, TASK-031 timeout/cancellation cleanup, TASK-032 separate liveness/readiness probes, TASK-033 OpenTelemetry traces and focused metrics, TASK-034 structured JSON logs with run correlation, TASK-040 Linux/amd64 Docker packaging, TASK-041 local Kubernetes Deployment/Service manifests, TASK-042 measured Portal resource requests/limits, TASK-043 Portal probe and rollout tuning, TASK-045 Tempo restart hardening, BONUS-001 frontend Pareto frontier visualization, and BONUS-002 aggregate/disaggregated comparison. The following is the deliberately small candidate architecture for the assignment. Each material choice must be accepted in the corresponding ADR before implementation.
+The repository now contains the TASK-013/014 API boundary, TASK-015 bounded worker execution, TASK-016 structured-result parser/ranker, TASK-017 ephemeral artifact serving, the TASK-020 plain HTML/Jinja2 form, TASK-021 status polling, TASK-022 ranked-result/artifact presentation, TASK-030 queue backpressure, TASK-031 timeout/cancellation cleanup, TASK-032 separate liveness/readiness probes, TASK-033 OpenTelemetry traces and focused metrics, TASK-034 structured JSON logs with run correlation, TASK-040 Linux/amd64 Docker packaging, TASK-041 local Kubernetes Deployment/Service manifests, TASK-042 measured Portal resource requests/limits, TASK-043 Portal probe and rollout tuning, TASK-045 Tempo restart hardening, BONUS-001 frontend Pareto frontier visualization, and BONUS-002 aggregate/disaggregated comparison. BONUS-003 deterministic caching is governed by accepted ADR-008 and is in progress. The following is the deliberately small candidate architecture for the assignment. Each material choice must be accepted in the corresponding ADR before implementation.
 
 ## Candidate Shape
 
@@ -45,6 +45,12 @@ Polling at roughly two seconds is the default candidate. SSE/WebSockets and a Ku
 Use ephemeral local artifacts with a 24-hour cleanup policy for the take-home. Bound execution concurrency and pending work so CPU-heavy sweeps cannot starve probes. Prefer a single replica for demo clarity; document that restart loses in-flight jobs and local artifacts.
 
 Keep telemetry focused: FastAPI HTTP instrumentation, runs by status, active/queued runs, run duration, subprocess outcomes, artifact bytes, and JSON lifecycle logs. Logs include event, run ID, and current trace/span IDs without duplicating raw subprocess output or adding an OTel Logs pipeline. Queue depth is a gauge and span attribute, never a metric label. OTLP export is optional through standard environment variables; do not add Kafka, Redis, PostgreSQL, S3/MinIO, a durable queue, or a full collector deployment without an accepted ADR and time justification.
+
+The accepted cache is process-local and bounded. It stores normalized results
+and allow-listed artifact bytes keyed by canonical request plus version/image
+identity, restores artifacts into each new ephemeral run directory, and is lost
+on restart. It does not provide cross-replica deduplication or durable cache
+retention.
 
 ## Production Evolution
 

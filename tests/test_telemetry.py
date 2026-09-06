@@ -50,6 +50,26 @@ def test_metrics_endpoint_exposes_http_and_queue_metrics(tmp_path: Path) -> None
         service.shutdown()
 
 
+def test_metrics_endpoint_exposes_cache_outcomes() -> None:
+    telemetry = get_telemetry()
+    telemetry.record_cache_outcome("miss")
+    telemetry.record_cache_outcome("hit")
+    service = RunManager(start_workers=False)
+    try:
+        response = TestClient(create_app(service)).get("/metrics")
+    finally:
+        service.shutdown()
+
+    assert response.status_code == 200
+    cache_lines = [
+        line
+        for line in response.text.splitlines()
+        if line.startswith("portal_cache_outcomes_total{")
+    ]
+    assert any('outcome="miss"' in line for line in cache_lines)
+    assert any('outcome="hit"' in line for line in cache_lines)
+
+
 def test_completed_run_records_artifact_bytes(tmp_path: Path) -> None:
     def successful_runner(
         _: RunRequest, save_dir: Path, __

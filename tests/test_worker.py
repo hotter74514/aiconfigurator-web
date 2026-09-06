@@ -111,6 +111,58 @@ def test_worker_marks_success_and_captures_stdout() -> None:
     assert stored.artifacts == ["agg/best_config_topn.csv"]
 
 
+def test_worker_serves_identical_request_from_cache(tmp_path: Path) -> None:
+    calls = 0
+
+    def counting_runner(
+        _: RunRequest, save_dir: Path, cancel_event: Event
+    ) -> ExecutionResult:
+        nonlocal calls
+        calls += 1
+        return successful_runner(_, save_dir, cancel_event)
+
+    manager = RunManager(runner=counting_runner, artifact_root=tmp_path / "runs")
+    try:
+        first = manager.submit(make_request())
+        wait_for_status(manager, first.id, "completed")
+        second = manager.submit(make_request())
+        wait_for_status(manager, second.id, "completed")
+        first_stored = manager.get(first.id)
+        second_stored = manager.get(second.id)
+    finally:
+        manager.shutdown()
+
+    assert calls == 1
+    assert first_stored is not None
+    assert second_stored is not None
+    assert second_stored.results == first_stored.results
+    assert second_stored.stdout == "Result served from deterministic cache"
+    assert second_stored.artifacts == ["agg/best_config_topn.csv"]
+    assert manager.artifact_path(second.id, "agg/best_config_topn.csv").read_text() != ""
+
+
+def test_worker_does_not_cache_failed_runs() -> None:
+    calls = 0
+
+    def counting_failing_runner(
+        _: RunRequest, save_dir: Path, cancel_event: Event
+    ) -> ExecutionResult:
+        nonlocal calls
+        calls += 1
+        return failing_runner(_, save_dir, cancel_event)
+
+    manager = RunManager(runner=counting_failing_runner)
+    try:
+        first = manager.submit(make_request())
+        wait_for_status(manager, first.id, "failed")
+        second = manager.submit(make_request())
+        wait_for_status(manager, second.id, "failed")
+    finally:
+        manager.shutdown()
+
+    assert calls == 2
+
+
 def test_worker_marks_nonzero_exit_as_failed_and_captures_stderr() -> None:
     manager = RunManager(runner=failing_runner)
     try:

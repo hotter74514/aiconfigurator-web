@@ -105,6 +105,11 @@ class PortalTelemetry:
             unit="By",
             description="Bytes written to completed run artifacts",
         )
+        self.cache_outcomes = meter.create_counter(
+            "portal.cache.outcomes",
+            unit="{outcome}",
+            description="Deterministic cache hits and misses",
+        )
 
     def record_queue_state(
         self,
@@ -149,6 +154,9 @@ class PortalTelemetry:
 
     def record_subprocess_outcome(self, outcome: str) -> None:
         self.subprocess_outcomes.add(1, {"outcome": outcome})
+
+    def record_cache_outcome(self, outcome: str) -> None:
+        self.cache_outcomes.add(1, {"outcome": outcome})
 
     def force_flush(self) -> None:
         self.providers.tracer_provider.force_flush()

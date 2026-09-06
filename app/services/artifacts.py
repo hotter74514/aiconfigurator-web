@@ -3,6 +3,7 @@ import re
 import shutil
 import tempfile
 import time
+from typing import Mapping
 from uuid import UUID
 
 
@@ -131,6 +132,39 @@ class ArtifactStore:
             except OSError:
                 continue
         return total
+
+    def snapshot_allowed(self, run_id: UUID) -> dict[str, bytes]:
+        """Read all allow-listed files for a successful cache entry."""
+
+        snapshot: dict[str, bytes] = {}
+        for name in self.list_allowed(run_id):
+            try:
+                snapshot[name] = self.resolve_allowed(run_id, name).read_bytes()
+            except OSError as exc:
+                raise ArtifactStoreError(
+                    f"Could not snapshot artifact {name} for run {run_id}"
+                ) from exc
+        return snapshot
+
+    def restore_allowed(
+        self, run_id: UUID, artifacts: Mapping[str, bytes]
+    ) -> list[str]:
+        """Restore a validated cache snapshot into a fresh run directory."""
+
+        run_dir = self.prepare_run(run_id)
+        for name, content in artifacts.items():
+            relative = self._parse_relative_name(name)
+            if not self._is_allowed_relative(relative):
+                raise ArtifactStoreError(f"Cached artifact is not allow-listed: {name}")
+            path = run_dir.joinpath(*relative.parts)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                path.write_bytes(content)
+            except OSError as exc:
+                raise ArtifactStoreError(
+                    f"Could not restore cached artifact {name} for run {run_id}"
+                ) from exc
+        return self.list_allowed(run_id)
 
     def resolve_allowed(self, run_id: UUID, name: str) -> Path:
         relative = self._parse_relative_name(name)

@@ -11,7 +11,7 @@ This index tracks the decisions that must be defensible in the interview. The de
 | [005](decisions/005-concurrency.md) | Queue and CPU contention | Accepted |
 | [006](decisions/006-probes.md) | Probe semantics and lifecycle | Accepted |
 | [007](decisions/007-observability.md) | Metrics and structured logs | Accepted |
-| [008](decisions/008-caching.md) | Determinism and caching | Proposed |
+| [008](decisions/008-caching.md) | Determinism and caching | Accepted |
 | [009](decisions/009-multi-tenancy.md) | Result visibility and quotas | Proposed |
 | [010](decisions/010-output-trust.md) | Estimate warnings and validation | Proposed |
 | [011](decisions/011-timeout-cancellation.md) | Timeout, cancellation, and subprocess cleanup | Accepted |
@@ -37,6 +37,11 @@ and lowest predicted request latency, scoped to candidates meeting both
 requested targets. Missing modes and no-SLA-feasible cases are shown explicitly.
 This adds no API, persistence, execution, or dependency changes; the summary is
 an explanation aid for model-based estimates, not a deployment recommendation.
+
+ADR-008 is accepted for the deterministic cache milestone. The cache remains
+local to one Portal process, bounded by entry count, and ephemeral across
+restarts; its key includes the canonical request, AIConfigurator version, result
+model version, and runner image identity.
 
 ## Approval protocol
 

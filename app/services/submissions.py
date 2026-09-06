@@ -12,6 +12,12 @@ from opentelemetry.trace import Span, Status, StatusCode, set_span_in_context
 from app.domain.results import RankedResults
 from app.domain.runs import RunRequest, RunStatus, StoredRun, new_stored_run
 from app.services.artifacts import ArtifactStore
+from app.services.cache import (
+    DEFAULT_CACHE_SIZE,
+    CacheIdentity,
+    ResultCache,
+    build_cache_key,
+)
 from app.services.executor import (
     TERMINATION_GRACE_SECONDS,
     ExecutionResult,
@@ -53,6 +59,9 @@ class RunManager:
         queue_size: int = 10,
         start_workers: bool = True,
         artifact_root: Path | str | None = None,
+        cache: ResultCache | None = None,
+        cache_identity: CacheIdentity | None = None,
+        cache_size: int = DEFAULT_CACHE_SIZE,
     ) -> None:
         configure_logging()
         if worker_count not in (1, 2):
@@ -65,6 +74,8 @@ class RunManager:
         self._queue: Queue[UUID] = Queue(maxsize=queue_size)
         self._runner = runner
         self._telemetry: PortalTelemetry = get_telemetry()
+        self._cache = cache or ResultCache(max_entries=cache_size)
+        self._cache_identity = cache_identity or CacheIdentity.from_environment()
         configured_root = artifact_root or os.getenv(
             "AICONFIGURATOR_ARTIFACT_ROOT", ".tmp/runs"
         )
@@ -333,6 +344,33 @@ class RunManager:
                     context_token = otel_context.attach(run_context)
                     try:
                         log_event(LOGGER, "run_started", run_id=run.id)
+                        cache_key = build_cache_key(run.request, self._cache_identity)
+                        cached = self._cache.get(cache_key)
+                        if cached is not None:
+                            self._telemetry.record_cache_outcome("hit")
+                            log_event(LOGGER, "run_cache_hit", run_id=run.id)
+                            restored_artifacts = self._artifacts.restore_allowed(
+                                run_id, cached.artifacts
+                            )
+                            execution = ExecutionResult(
+                                exit_code=0,
+                                stdout="Result served from deterministic cache",
+                                stderr="",
+                                duration_ms=0,
+                            )
+                            updated = self.mark_completed(
+                                run_id,
+                                execution=execution,
+                                results=cached.results,
+                                artifacts=restored_artifacts,
+                            )
+                            self._finish_run_telemetry(
+                                run_id,
+                                status=updated.status,
+                                execution=execution,
+                            )
+                            continue
+                        self._telemetry.record_cache_outcome("miss")
                         execution = self._runner(
                             run.request, artifact_dir, cancel_event
                         )
@@ -368,11 +406,17 @@ class RunManager:
                         ttft_target_ms=run.request.ttft,
                         tpot_target_ms=run.request.tpot,
                     )
+                    artifacts = self._artifacts.list_allowed(run_id)
+                    self._cache.put(
+                        cache_key,
+                        results,
+                        self._artifacts.snapshot_allowed(run_id),
+                    )
                     updated = self.mark_completed(
                         run_id,
                         execution=execution,
                         results=results,
-                        artifacts=self._artifacts.list_allowed(run_id),
+                        artifacts=artifacts,
                     )
                     self._finish_run_telemetry(
                         run_id, status=updated.status, execution=execution

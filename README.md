@@ -54,11 +54,11 @@ FastAPI + Jinja2
   │
   ├── bounded local worker and pending queue
   │       └── isolated Linux/amd64 subprocess → AIConfigurator CLI
-  ├── in-memory run metadata and status
+  ├── in-memory run metadata/status and bounded result cache
   └── ephemeral per-run artifacts under /app/data/runs/{run_id}/
 ```
 
-The web process admits work and returns a run ID immediately. A bounded local worker executes the real CLI in an isolated subprocess, parses its generated CSV output, ranks configurations against the requested SLA, and records safe failure details. The browser polls until the run is `completed` or `failed`. AIConfigurator output is an estimate and still requires real serving benchmarks before production decisions.
+The web process admits work and returns a run ID immediately. A bounded local worker executes the real CLI in an isolated subprocess, parses its generated CSV output, ranks configurations against the requested SLA, and records safe failure details. Successful normalized results and allow-listed artifacts are retained in a bounded process-local deterministic cache; a cache hit still follows the async run lifecycle but skips the CLI and restores artifacts into the new run directory. The browser polls until the run is `completed` or `failed`. AIConfigurator output is an estimate and still requires real serving benchmarks before production decisions.
 
 The container contract is `linux/amd64` because AIConfigurator's wheels are Linux x86-64 only. The local Kubernetes deployment has one Portal replica, a ClusterIP Service, an `emptyDir` artifact volume, and non-root execution. It requests 1 CPU/1 GiB and is limited to 2 CPU/2 GiB based on the recorded local measurement; rolling updates use `maxUnavailable: 0` and `maxSurge: 1`. The Portal is not a serving runtime.
 
@@ -88,7 +88,7 @@ curl -X POST http://127.0.0.1:8000/api/runs \
   -d '{"model":"Qwen/Qwen3-32B-FP8","system":"h200_sxm","total_gpus":32,"ttft":2000,"tpot":30}'
 ```
 
-Open `http://127.0.0.1:8000/` for the form. It submits the five constraints to the async API, polls status every two seconds, and reports loading, completion, or safe error states. Completed runs render ranked estimates with SLA outcomes, an aggregate-versus-disaggregated comparison, a throughput-versus-latency Pareto frontier, and allow-listed artifact links. The mode comparison is scoped to candidates meeting both targets and reports missing modes explicitly; it does not replace benchmark validation. The service exposes `/live` for process liveness, `/ready` for worker/storage readiness, and `/metrics` for Prometheus text. Application lifecycle events are JSON logs with `event`, `run_id`, `trace_id`, and `span_id`; set `PORTAL_LOG_LEVEL` to adjust verbosity. OpenTelemetry uses `OTEL_SERVICE_NAME` and can add asynchronous OTLP HTTP trace/metric export with `OTEL_EXPORTER_OTLP_ENDPOINT` or signal-specific endpoint/exporter variables; no collector is required for local metrics. The API returns HTTP `202` with `{ "id": "...", "status": "queued" }`; when all pending queue slots are occupied, it returns `429` with `Retry-After: 1`, and a service shutting down returns `503`. Completed runs include ranked `results` and allow-listed `artifacts`, which can be downloaded with `GET /api/runs/{id}/artifacts/{path}`. The worker uses `AICONFIGURATOR_ARTIFACT_ROOT` (default `.tmp/runs`; use `/app/data/runs` in the container), `AICONFIGURATOR_TIMEOUT_SECONDS` (default 900 seconds), and removes UUID run directories older than 24 hours. Native macOS execution is not supported because the AIConfigurator dependency is Linux x86-64 only.
+Open `http://127.0.0.1:8000/` for the form. It submits the five constraints to the async API, polls status every two seconds, and reports loading, completion, or safe error states. Completed runs render ranked estimates with SLA outcomes, an aggregate-versus-disaggregated comparison, a throughput-versus-latency Pareto frontier, and allow-listed artifact links. Identical requests may be served from the bounded deterministic cache after a successful run; cache hits still return a new run ID and restore downloadable artifacts. The mode comparison is scoped to candidates meeting both targets and reports missing modes explicitly; it does not replace benchmark validation. The service exposes `/live` for process liveness, `/ready` for worker/storage readiness, and `/metrics` for Prometheus text. Application lifecycle events are JSON logs with `event`, `run_id`, `trace_id`, and `span_id`; set `PORTAL_LOG_LEVEL` to adjust verbosity. OpenTelemetry uses `OTEL_SERVICE_NAME` and can add asynchronous OTLP HTTP trace/metric export with `OTEL_EXPORTER_OTLP_ENDPOINT` or signal-specific endpoint/exporter variables; no collector is required for local metrics. The API returns HTTP `202` with `{ "id": "...", "status": "queued" }`; when all pending queue slots are occupied, it returns `429` with `Retry-After: 1`, and a service shutting down returns `503`. Completed runs include ranked `results` and allow-listed `artifacts`, which can be downloaded with `GET /api/runs/{id}/artifacts/{path}`. The worker uses `AICONFIGURATOR_ARTIFACT_ROOT` (default `.tmp/runs`; use `/app/data/runs` in the container), `AICONFIGURATOR_TIMEOUT_SECONDS` (default 900 seconds), and removes UUID run directories older than 24 hours. Native macOS execution is not supported because the AIConfigurator dependency is Linux x86-64 only.
 
 ## Demo rehearsal
 
@@ -131,22 +131,24 @@ The detailed records in [`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md) a
 | [005 — Bounded concurrency](docs/decisions/005-concurrency.md) | One or two workers and a pending queue of ten provide predictable CPU use; saturation returns `429` with `Retry-After: 1`. |
 | [006 — Separate probes](docs/decisions/006-probes.md) | `/live` checks process liveness; `/ready` checks initialization and writable artifact storage, not worker idleness. |
 | [007 — Focused observability](docs/decisions/007-observability.md) | OpenTelemetry traces, Prometheus metrics, and correlated structured logs cover HTTP, queue, runs, subprocesses, and artifact bytes. |
+| [008 — Deterministic caching](docs/decisions/008-caching.md) | Successful normalized results and allow-listed artifacts use a bounded process-local LRU cache keyed by request and runtime identity. |
 | [011 — Timeout and cancellation](docs/decisions/011-timeout-cancellation.md) | Configurable subprocess deadlines (900 seconds by default), process-group cleanup, and shutdown cancellation prevent hung work from occupying workers forever. |
 | [012 — Local observability stack](docs/decisions/012-local-observability-stack.md) | A dedicated Minikube profile runs small, separate Helm releases for Prometheus, Tempo, Grafana, and the OTel Collector. |
 | [013 — Direct Alloy-to-Loki forwarding](docs/decisions/013-loki-alloy-log-forwarding.md) | Alloy collects Kubernetes container logs and writes directly to local Loki while preserving trace/span correlation metadata. |
 
-ADR-008 (caching), ADR-009 (multi-tenancy), and ADR-010 (output-trust policy) remain **Proposed** and are not expansion points for the current take-home. The UI's estimate warning is still shown because benchmark validation is required.
+ADR-009 (multi-tenancy) and ADR-010 (output-trust policy) remain **Proposed** and are not expansion points for the current take-home. The UI's estimate warning is still shown because benchmark validation is required.
 
 ## Known Limitations
 
 These are deliberate take-home boundaries rather than hidden production guarantees:
 
 - **Estimate accuracy:** AIConfigurator predicts serving behavior; every result needs a real benchmark on the target model, GPU system, backend, and workload before it is used for capacity or deployment decisions. The recorded CPU/memory measurement is a local Minikube observation, not a production capacity benchmark.
-- **Execution and durability:** run metadata is in memory, there is one local worker by default, and the pending queue is capped at ten. A process or Pod restart loses queued/in-flight runs and their status.
+- **Execution and durability:** run metadata and the bounded cache are in memory, there is one local worker by default, and the pending queue is capped at ten. A process or Pod restart loses queued/in-flight runs, cache entries, and their status.
 - **Artifact lifecycle:** artifacts are stored locally with a 24-hour cleanup policy and Kubernetes uses `emptyDir`. They are lost on restart, there is no run history, and only explicit allow-listed filenames can be downloaded. Generated scripts are never executed by the portal.
 - **Platform and supply chain:** AIConfigurator is supported only in the Linux x86-64 container contract, so macOS development requires Docker with `linux/amd64`. The base image and direct AIConfigurator dependencies are pinned, but transitive project dependencies are not yet hash-locked.
 - **User and network security:** authentication, authorization, tenant ownership, quotas, TLS, ingress, secret management, and high availability are intentionally absent. The local deployment is for a controlled demo and must not be treated as an internet-facing service.
 - **Cancellation and operations:** there is no public per-run cancellation endpoint; cancellation is currently limited to service shutdown and timeout cleanup. Metrics and traces are process-local unless an OTLP backend is configured, and Prometheus state resets on restart. The local Loki/Alloy setup is ephemeral and requires privileged read-only access to Kubernetes node log paths.
+- **Caching:** cache identity defaults to the pinned AIConfigurator version, the portal result-model version, and a local-unversioned runner identity. Set `AICONFIGURATOR_RUNNER_IMAGE_DIGEST` to the deployed image digest for release-grade invalidation; the cache is process-local, bounded, and not shared across replicas.
 
 ## Production evolution
 

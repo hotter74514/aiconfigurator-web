@@ -4,9 +4,19 @@
 
 Default AIConfigurator results are deterministic for identical inputs, but caching adds invalidation and artifact lifecycle concerns.
 
-## Proposed Decision
+## Decision
 
-Do not implement caching before the must-have path. If added later, key entries by a canonical request plus AIConfigurator version, data/model version, and runner image digest. Invalidate on any of those changes.
+Implement a bounded in-memory LRU cache inside the existing Portal service. Cache
+only successful normalized results and the allow-listed artifact bytes needed to
+serve a completed run. On a cache hit, keep the existing asynchronous queue and
+status contract, restore the cached artifacts into the new ephemeral run
+directory, and complete the new run without invoking AIConfigurator.
+
+Key entries by a canonical request plus AIConfigurator version, portal result
+model version, and runner image identity/digest. Changing any key component
+automatically misses older entries. Keep the cache bounded by entry count and
+discard it on process restart; do not introduce a shared cache or persistent
+storage for this take-home.
 
 ## Alternatives and Trade-offs
 
@@ -18,4 +28,4 @@ Repeated identical requests or measured CPU saturation that materially harms use
 
 ## Status
 
-**Proposed — architecture owner approval required.**
+**Accepted — architecture owner approval recorded on 2026-09-06.**
