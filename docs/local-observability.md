@@ -6,6 +6,8 @@ The repository includes a local Minikube stack for the portal:
 - Tempo `1.24.4` / Tempo `2.9.0`
 - Grafana `10.5.15` / Grafana `12.3.1`
 - OpenTelemetry Collector Helm chart `0.172.1` / contrib image `0.159.0`
+- Loki `7.3.0` / Loki image `3.6.11`
+- Alloy `1.12.1` / Alloy `v1.19.2`
 
 ## Start or recreate the local cluster
 
@@ -48,6 +50,12 @@ helm upgrade --install tempo grafana/tempo \
 helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
   --version 0.172.1 --namespace observability \
   --values k8s/observability/collector-values.yaml --wait
+helm upgrade --install loki grafana/loki \
+  --version 7.3.0 --namespace observability \
+  --values k8s/observability/loki-values.yaml --wait
+helm upgrade --install alloy grafana/alloy \
+  --version 1.12.1 --namespace observability \
+  --values k8s/observability/alloy-values.yaml --wait
 helm upgrade --install grafana grafana/grafana \
   --version 10.5.15 --namespace observability \
   --values k8s/observability/grafana-values.yaml --wait
@@ -66,7 +74,11 @@ kubectl rollout status deployment/aiconfigurator-portal --timeout=180s
 ```
 
 The portal sends OTLP/HTTP traces to `otel-collector` and Prometheus scrapes
-the portal's `/metrics` endpoint. Grafana is provisioned with both backends.
+the portal's `/metrics` endpoint. Alloy reads Pod logs from the Minikube node
+and writes directly to Loki. Portal `trace_id` and `span_id` fields are copied
+to Loki structured metadata. Grafana is provisioned with Prometheus, Tempo,
+and Loki; Tempo trace-to-logs and Loki TraceID derived-field correlation are
+editable from the Grafana UI.
 
 ## Access and verification
 
@@ -77,6 +89,7 @@ kubectl port-forward service/aiconfigurator-portal 8000:8000
 kubectl port-forward -n observability service/prometheus-server 9090:80
 kubectl port-forward -n observability service/grafana 3000:80
 kubectl port-forward -n observability service/tempo 3200:3200
+kubectl port-forward -n observability service/loki 3100:3100
 ```
 
 - Portal: <http://127.0.0.1:8000>
@@ -84,6 +97,7 @@ kubectl port-forward -n observability service/tempo 3200:3200
 - Grafana: <http://127.0.0.1:3000>, user `admin`, password from
   `kubectl get secret -n observability grafana-admin -o jsonpath='{.data.admin-password}' | base64 --decode`
 - Tempo API: <http://127.0.0.1:3200>
+- Loki API: <http://127.0.0.1:3100>
 
 Useful checks:
 
@@ -97,13 +111,28 @@ curl -fsS -u "admin:$GRAFANA_PASSWORD" -X POST \
   http://127.0.0.1:3000/api/datasources/uid/prometheus/health
 curl -fsS -u "admin:$GRAFANA_PASSWORD" -X POST \
   http://127.0.0.1:3000/api/datasources/uid/tempo/health
+curl -fsS -u "admin:$GRAFANA_PASSWORD" -X POST \
+  http://127.0.0.1:3000/api/datasources/uid/loki/health
 curl -fsS 'http://127.0.0.1:3200/api/search?tags=service.name%3Daiconfigurator-portal'
+# After one real Portal request, query logs by its trace ID:
+curl -G -fsS http://127.0.0.1:3100/loki/api/v1/query \
+  --data-urlencode 'query={service_name="aiconfigurator-portal"} | trace_id="<TRACE_ID>"'
 ```
 
 All storage is ephemeral. `minikube delete -p aiconfigurator` removes the
 cluster and telemetry data. The stack is for local development only and has no
 TLS, authentication beyond Grafana's local login, HA, or durable retention.
 
-The installation was verified on 2026-09-05 with all four observability pods
-Ready, Portal probe responses `200`, Prometheus portal target `up=1`, Grafana
-Prometheus and Tempo datasource health `OK`, and Tempo returning Portal traces.
+The Prometheus, Tempo, Grafana, and OTel Collector installation was verified on
+2026-09-05. Loki and Alloy were verified on 2026-09-06 in Minikube context
+`aiconfigurator`: Loki `2/2` and Alloy `2/2` were Ready, Grafana Loki and Tempo
+datasource health returned `OK`, and real Portal run
+`c68b01dc-0b0d-4603-95dd-21c38f31118a` completed successfully. Loki returned
+the Portal log records for trace ID
+`cbff4846d714411f1ff600d580e4b882` and span ID `30c30577c46ad423` through
+structured-metadata filters; the corresponding Tempo trace returned 9 spans,
+including the matching span. The Grafana datasource API reports
+`readOnly: false`, Tempo `tracesToLogsV2` enabled with trace/span filtering, and
+the Loki `TraceID` derived field linked to Tempo. In the Grafana UI, open
+Explore with Tempo to use the span's Logs for this span link, or Explore with
+Loki to use the TraceID link on a matching log line.

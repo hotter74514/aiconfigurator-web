@@ -42,7 +42,7 @@ The runtime target listens on port `8000`, runs as the non-root `portal` user, a
 
 ## Local Kubernetes
 
-The local manifests are in [`k8s/`](k8s/). For the complete Minikube plus Prometheus, Tempo, OTel Collector Contrib, and Grafana setup, follow [`docs/local-observability.md`](docs/local-observability.md). The short portal-only path is:
+The local manifests are in [`k8s/`](k8s/). For the complete Minikube plus Prometheus, Tempo, OTel Collector Contrib, Loki, Alloy, and Grafana setup, follow [`docs/local-observability.md`](docs/local-observability.md). Alloy forwards Kubernetes Pod logs directly to Loki and preserves Portal `trace_id`/`span_id` as structured metadata for Grafana trace/log correlation. The short portal-only path is:
 
 ```sh
 make minikube-load-image
@@ -72,4 +72,4 @@ Document the execution model, asynchronous API, artifact lifecycle, concurrency,
 
 ## Known Limitations
 
-The form is intentionally plain HTML/Jinja2 with a small inline submit/polling/result bridge and no frontend framework. There is no public per-run cancellation endpoint; shutdown cancellation is lifecycle protection only. Metrics, traces, and logs are process-local unless an OTLP backend or external log collector is configured; in-memory metric state resets on restart. The local Minikube observability stack uses ephemeral storage and is not production-ready. Artifacts are ephemeral and are lost on process/pod restart; only explicit generated filenames are downloadable, and generated scripts are never executed by the portal. The Docker image pins the base image digest and direct AIConfigurator dependencies, but does not yet hash-lock every transitive Python dependency. Authentication, TLS, secrets management, and high availability are intentionally out of scope for the take-home; the eventual submission must state what would be added for production.
+The form is intentionally plain HTML/Jinja2 with a small inline submit/polling/result bridge and no frontend framework. There is no public per-run cancellation endpoint; shutdown cancellation is lifecycle protection only. Metrics, traces, and logs are process-local unless an OTLP backend or external log collector is configured; in-memory metric state resets on restart. The local Minikube observability stack uses ephemeral storage and is not production-ready; Grafana Loki/Alloy collection requires privileged read-only access to the node's `/var/log` path. Artifacts are ephemeral and are lost on process/pod restart; only explicit generated filenames are downloadable, and generated scripts are never executed by the portal. The Docker image pins the base image digest and direct AIConfigurator dependencies, but does not yet hash-lock every transitive Python dependency. Authentication, TLS, secrets management, and high availability are intentionally out of scope for the take-home; the eventual submission must state what would be added for production.

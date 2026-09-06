@@ -108,4 +108,4 @@ deletion, support multiple teams, or meet production retention requirements.
 
 ## Status
 
-**Proposed — architecture owner approval required before installation.**
+**Accepted — architecture owner approval recorded on 2026-09-06.**

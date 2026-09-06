@@ -38,4 +38,27 @@ datasources:
         type: tempo
         access: proxy
         url: http://tempo.observability.svc.cluster.local:3200
-        editable: false
+        editable: true
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+            spanStartTimeShift: -2s
+            spanEndTimeShift: 2s
+            tags:
+              - key: service.name
+                value: service_name
+            filterByTraceID: true
+            filterBySpanID: true
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://loki.observability.svc.cluster.local:3100
+        editable: true
+        jsonData:
+          derivedFields:
+            - name: TraceID
+              matcherRegex: '"trace_id"\s*:\s*"([0-9a-f]{32})"'
+              datasourceUid: tempo
+              url: '$${__value.raw}'
+              urlDisplayLabel: View trace
