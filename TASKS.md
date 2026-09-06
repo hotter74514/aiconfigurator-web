@@ -38,6 +38,7 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 - [x] **TASK-041** — Add local Kubernetes Deployment and Service *(see [Kubernetes report](docs/task-041-kubernetes.md))*
 - [x] **TASK-042** — Measure and set CPU requests/limits *(see [Tempo hardening report](docs/task-043-tempo-hardening.md))*
 - [x] **TASK-043** — Configure probe thresholds and rolling-update behavior *(see [Tempo hardening report](docs/task-043-tempo-hardening.md))*
+- [x] **TASK-044** — Integrate Prometheus exemplars with Tempo trace correlation *(see [exemplar report](docs/task-044-prometheus-exemplars.md))*
 
 ## P5 — Submission and defense
 

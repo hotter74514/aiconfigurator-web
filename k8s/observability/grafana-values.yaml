@@ -33,6 +33,11 @@ datasources:
         url: http://prometheus-server.observability.svc.cluster.local
         isDefault: true
         editable: false
+        jsonData:
+          exemplarTraceIdDestinations:
+            - name: trace_id
+              datasourceUid: tempo
+              urlDisplayLabel: View trace
       - name: Tempo
         uid: tempo
         type: tempo

@@ -80,6 +80,13 @@ to Loki structured metadata. Grafana is provisioned with Prometheus, Tempo,
 and Loki; Tempo trace-to-logs and Loki TraceID derived-field correlation are
 editable from the Grafana UI.
 
+Prometheus exemplar storage is enabled with a bounded local limit of 10,000.
+The Portal exposes OpenMetrics and attaches the sampled run span's `trace_id`
+to the `portal_trace_run_duration_seconds` histogram as exemplar metadata.
+Grafana's Prometheus datasource maps the `trace_id` exemplar to the Tempo
+datasource, so a completed run's metric point can open its Tempo trace without
+turning trace IDs into high-cardinality time-series labels.
+
 Tempo is tuned for the single-node local cluster: liveness uses a TCP check on
 port 3200 while `/ready` is reserved for readiness, so temporary query latency
 does not restart a healthy process. Readiness allows six consecutive 10-second
@@ -125,6 +132,9 @@ curl -fsS 'http://127.0.0.1:3200/api/search?tags=service.name%3Daiconfigurator-p
 # After one real Portal request, query logs by its trace ID:
 curl -G -fsS http://127.0.0.1:3100/loki/api/v1/query \
   --data-urlencode 'query={service_name="aiconfigurator-portal"} | trace_id="<TRACE_ID>"'
+# After one completed Portal run, query Prometheus exemplars:
+curl -G -fsS http://127.0.0.1:9090/api/v1/query_exemplars \
+  --data-urlencode 'query=portal_trace_run_duration_seconds_bucket{status="completed"}'
 ```
 
 All storage is ephemeral. `minikube delete -p aiconfigurator` removes the
@@ -144,3 +154,10 @@ including the matching span. The Grafana datasource API reports
 the Loki `TraceID` derived field linked to Tempo. In the Grafana UI, open
 Explore with Tempo to use the span's Logs for this span link, or Explore with
 Loki to use the TraceID link on a matching log line.
+
+Prometheus exemplar correlation was additionally verified on 2026-09-06: the
+Portal returned OpenMetrics with a `trace_id` exemplar for a real completed
+run, Prometheus reported the Portal target `up`, and
+`/api/v1/query_exemplars` returned the matching trace ID from the
+`portal_trace_run_duration_seconds_bucket` series. In Grafana, open Explore
+with Prometheus and select the exemplar marker to follow the link to Tempo.

@@ -513,6 +513,7 @@ class RunManager:
             status,
             duration_ms=duration_ms,
             active=active,
+            context=run_context,
         )
         if status == "completed" and run is not None:
             self._telemetry.record_artifact_bytes(
