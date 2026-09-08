@@ -57,3 +57,4 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 - [x] **BONUS-003** — Deterministic result cache *(see [bonus report](docs/task-057-cache.md))*
 - [x] **BONUS-004** — Bounded process-local run history *(see [bonus report](docs/task-058-run-history.md))*
 - [x] **BONUS-005** — Multi-user awareness *(see [bonus report](docs/task-059-multi-user-awareness.md))*
+- [x] **BONUS-006** — One-click artifact bundle *(see [bonus report](docs/task-061-artifact-bundle.md))*

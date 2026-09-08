@@ -108,6 +108,10 @@
       .artifact-list { line-height: 1.8; margin-bottom: 0; overflow-wrap: anywhere; }
       #artifacts-panel { border-top: 1px solid var(--line); margin-top: 1.5rem; padding-top: 1.25rem; }
       #artifacts-panel h3 { font-size: 1rem; }
+      .artifact-actions { margin-bottom: .75rem; }
+      .artifact-bundle { background: var(--signal); border: 1px solid var(--signal-dark); border-radius: .65rem; color: #fff; display: inline-block; font-weight: 750; padding: .6rem .85rem; text-decoration: none; }
+      .artifact-bundle:hover { background: var(--signal-dark); }
+      .artifact-bundle[hidden] { display: none; }
       #pareto-panel, #comparison-panel { border-top: 1px solid var(--line); margin-top: 2rem; padding-top: 1.5rem; }
       #pareto-panel h2, #comparison-panel h2 { font-size: 1.2rem; }
       .pareto-wrap { overflow-x: auto; }
@@ -313,6 +317,9 @@
         </section>
         <div id="artifacts-panel">
           <h3>Deployment artifacts</h3>
+          <div class="artifact-actions">
+            <a id="artifact-bundle" class="artifact-bundle" hidden>Download all artifacts</a>
+          </div>
           <ul id="artifact-list" class="artifact-list"></ul>
         </div>
       </section>
@@ -356,6 +363,7 @@
       const historyBody = document.querySelector("#history-body");
       const resultsPanel = document.querySelector("#results-panel");
       const resultsBody = document.querySelector("#results-body");
+      const artifactBundle = document.querySelector("#artifact-bundle");
       const artifactList = document.querySelector("#artifact-list");
       const paretoPanel = document.querySelector("#pareto-panel");
       const paretoChart = document.querySelector("#pareto-chart");
@@ -651,6 +659,13 @@
         return `/api/runs/${encodeURIComponent(runId)}/artifacts/${encodedPath}`;
       }
 
+      function bundleHref(runId) {
+        if (typeof runId !== "string" || runId.length === 0) {
+          throw new Error("The run returned an invalid identifier.");
+        }
+        return `/api/runs/${encodeURIComponent(runId)}/artifacts.zip`;
+      }
+
       function clearResults() {
         resultsPanel.hidden = true;
         paretoPanel.hidden = true;
@@ -659,10 +674,13 @@
         paretoFrontierList.replaceChildren();
         comparisonPanel.hidden = true;
         comparisonSummary.replaceChildren();
+        artifactBundle.hidden = true;
+        artifactBundle.removeAttribute("href");
+        artifactBundle.removeAttribute("download");
         artifactList.replaceChildren();
       }
 
-      function renderResults(runId, results, artifacts) {
+      function renderResults(runId, results, artifacts, artifactsAvailable = true) {
         if (!results || !Array.isArray(results.candidates) || results.candidates.length === 0) {
           throw new Error("The run returned no ranked configurations.");
         }
@@ -686,7 +704,8 @@
         renderModeComparison(results);
 
         artifactList.replaceChildren();
-        for (const artifact of Array.isArray(artifacts) ? artifacts : []) {
+        const artifactNames = Array.isArray(artifacts) ? artifacts : [];
+        for (const artifact of artifactNames) {
           const item = document.createElement("li");
           const link = document.createElement("a");
           link.href = artifactHref(runId, artifact);
@@ -694,6 +713,15 @@
           link.download = artifact.substring(artifact.lastIndexOf("/") + 1);
           item.append(link);
           artifactList.append(item);
+        }
+        if (artifactNames.length > 0 && artifactsAvailable) {
+          artifactBundle.href = bundleHref(runId);
+          artifactBundle.download = `aiconfigurator-run-${runId}-artifacts.zip`;
+          artifactBundle.hidden = false;
+        } else {
+          artifactBundle.hidden = true;
+          artifactBundle.removeAttribute("href");
+          artifactBundle.removeAttribute("download");
         }
         if (artifactList.children.length === 0) {
           const item = document.createElement("li");
@@ -708,7 +736,12 @@
         if (item.status === "completed") {
           try {
             clearResults();
-            renderResults(item.id, item.results, item.artifacts);
+            renderResults(
+              item.id,
+              item.results,
+              item.artifacts,
+              !item.artifacts_unavailable
+            );
             if (item.artifacts_unavailable) {
               const notice = document.createElement("li");
               notice.className = "history-unavailable";

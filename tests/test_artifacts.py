@@ -2,10 +2,15 @@ from pathlib import Path
 import os
 import time
 from uuid import uuid4
+from zipfile import ZipFile
 
 from pytest import raises
 
-from app.services.artifacts import ArtifactNotFoundError, ArtifactStore
+from app.services.artifacts import (
+    ArtifactNotFoundError,
+    ArtifactStore,
+    ArtifactStoreError,
+)
 
 
 def test_store_lists_only_allow_listed_files(tmp_path: Path) -> None:
@@ -65,3 +70,77 @@ def test_store_cleans_expired_uuid_run_directories(tmp_path: Path) -> None:
     store.cleanup_expired(now=current)
 
     assert not expired_dir.exists()
+
+
+def test_store_creates_bundle_with_relative_paths_and_duplicate_basenames(
+    tmp_path: Path,
+) -> None:
+    store = ArtifactStore(tmp_path / "runs")
+    run_id = uuid4()
+    run_dir = store.prepare_run(run_id)
+    artifact_names = [
+        "agg/top1/k8s_deploy.yaml",
+        "disagg/top1/k8s_deploy.yaml",
+    ]
+    for name, content in zip(artifact_names, ("agg", "disagg"), strict=True):
+        path = run_dir / name
+        path.parent.mkdir(parents=True)
+        path.write_text(content, encoding="utf-8")
+    (run_dir / "agg" / "secret.txt").write_text("secret", encoding="utf-8")
+
+    bundle_path = store.create_bundle(run_id, artifact_names)
+
+    with ZipFile(bundle_path) as archive:
+        assert archive.namelist() == artifact_names
+        assert archive.read(artifact_names[0]) == b"agg"
+        assert archive.read(artifact_names[1]) == b"disagg"
+        assert "agg/secret.txt" not in archive.namelist()
+
+
+def test_store_rejects_incomplete_or_unsafe_bundle_artifact_sets(tmp_path: Path) -> None:
+    store = ArtifactStore(tmp_path / "runs")
+    run_id = uuid4()
+    run_dir = store.prepare_run(run_id)
+    safe_path = run_dir / "agg" / "k8s_deploy.yaml"
+    safe_path.parent.mkdir(parents=True)
+    safe_path.write_text("safe", encoding="utf-8")
+
+    with raises(ArtifactNotFoundError):
+        store.create_bundle(
+            run_id,
+            ["agg/k8s_deploy.yaml", "disagg/top1/k8s_deploy.yaml"],
+        )
+
+    symlink_run_id = uuid4()
+    symlink_run_dir = store.prepare_run(symlink_run_id)
+    outside = tmp_path / "outside.yaml"
+    outside.write_text("private", encoding="utf-8")
+    symlink = symlink_run_dir / "disagg" / "top1" / "k8s_deploy.yaml"
+    symlink.parent.mkdir(parents=True)
+    symlink.symlink_to(outside)
+    with raises(ArtifactNotFoundError):
+        store.create_bundle(
+            symlink_run_id,
+            ["disagg/top1/k8s_deploy.yaml"],
+        )
+
+
+def test_store_reports_temporary_bundle_creation_failure(
+    tmp_path: Path, monkeypatch
+) -> None:
+    store = ArtifactStore(tmp_path / "runs")
+    run_id = uuid4()
+    artifact = store.prepare_run(run_id) / "agg" / "k8s_deploy.yaml"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_text("safe", encoding="utf-8")
+
+    def fail_temporary_file(*_args, **_kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(
+        "app.services.artifacts.tempfile.NamedTemporaryFile",
+        fail_temporary_file,
+    )
+
+    with raises(ArtifactStoreError, match="Could not create artifact bundle"):
+        store.create_bundle(run_id, ["agg/k8s_deploy.yaml"])

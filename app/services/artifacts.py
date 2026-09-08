@@ -3,8 +3,9 @@ import re
 import shutil
 import tempfile
 import time
-from typing import Mapping
+from typing import Collection, Mapping
 from uuid import UUID
+from zipfile import ZIP_DEFLATED, ZipFile
 
 
 ALLOWED_ARTIFACT_FILENAMES = frozenset(
@@ -165,6 +166,45 @@ class ArtifactStore:
                     f"Could not restore cached artifact {name} for run {run_id}"
                 ) from exc
         return self.list_allowed(run_id)
+
+    def create_bundle(self, run_id: UUID, artifacts: Collection[str]) -> Path:
+        """Create a transient ZIP from one complete allow-listed artifact set."""
+
+        names = sorted(artifacts)
+        if not names or len(names) != len(set(names)):
+            raise ArtifactNotFoundError(str(run_id))
+        if self.list_allowed(run_id) != names:
+            raise ArtifactNotFoundError(str(run_id))
+
+        bundle_path: Path | None = None
+        try:
+            self.root.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(
+                dir=self.root,
+                prefix=f".bundle-{run_id}-",
+                suffix=".zip",
+                delete=False,
+            ) as temporary:
+                bundle_path = Path(temporary.name)
+            with ZipFile(bundle_path, mode="w", compression=ZIP_DEFLATED) as archive:
+                for name in names:
+                    path = self.resolve_allowed(run_id, name)
+                    archive.write(path, arcname=name)
+        except ArtifactNotFoundError:
+            if bundle_path is not None:
+                bundle_path.unlink(missing_ok=True)
+            raise
+        except (OSError, RuntimeError, ValueError) as exc:
+            if bundle_path is not None:
+                bundle_path.unlink(missing_ok=True)
+            raise ArtifactStoreError(
+                f"Could not create artifact bundle for run {run_id}"
+            ) from exc
+        if bundle_path is None:  # pragma: no cover - NamedTemporaryFile assigned it
+            raise ArtifactStoreError(
+                f"Could not create artifact bundle for run {run_id}"
+            )
+        return bundle_path
 
     def resolve_allowed(self, run_id: UUID, name: str) -> Path:
         relative = self._parse_relative_name(name)

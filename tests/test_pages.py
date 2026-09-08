@@ -33,6 +33,11 @@ def test_index_contains_status_polling_and_result_rendering() -> None:
     assert 'id="results-panel"' in response.text
     assert 'id="results-body"' in response.text
     assert 'id="artifact-list"' in response.text
+    assert 'id="artifact-bundle"' in response.text
+    assert "Download all artifacts" in response.text
+    assert "bundleHref" in response.text
+    assert "artifactNames.length > 0 && artifactsAvailable" in response.text
+    assert "!item.artifacts_unavailable" in response.text
     assert "renderResults" in response.text
     assert "Estimate warning" in response.text
 

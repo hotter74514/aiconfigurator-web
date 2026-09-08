@@ -2,6 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 
 from app.domain.runs import (
     RunAcceptedResponse,
@@ -9,7 +10,7 @@ from app.domain.runs import (
     RunRequest,
     RunStatusResponse,
 )
-from app.services.artifacts import ArtifactNotFoundError
+from app.services.artifacts import ArtifactNotFoundError, ArtifactStoreError
 from app.services.submissions import (
     QueueCapacityError,
     RunManager,
@@ -68,6 +69,27 @@ def build_runs_router(service: RunManager) -> APIRouter:
             error=run.error,
             results=run.results,
             artifacts=run.artifacts or None,
+        )
+
+    @router.get("/api/runs/{run_id}/artifacts.zip")
+    def download_artifact_bundle(run_id: UUID) -> FileResponse:
+        try:
+            path = service.artifact_bundle_path(run_id)
+        except (ArtifactNotFoundError, RunNotFoundError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Artifact bundle not available",
+            ) from exc
+        except ArtifactStoreError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Artifact bundle could not be created",
+            ) from exc
+        return FileResponse(
+            path,
+            media_type="application/zip",
+            filename=f"aiconfigurator-run-{run_id}-artifacts.zip",
+            background=BackgroundTask(path.unlink, missing_ok=True),
         )
 
     @router.get("/api/runs/{run_id}/artifacts/{artifact_name:path}")

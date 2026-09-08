@@ -378,6 +378,12 @@ class RunManager:
             raise RunNotFoundError(str(run_id))
         return self._artifacts.resolve_allowed(run_id, name)
 
+    def artifact_bundle_path(self, run_id: UUID) -> Path:
+        run = self.get(run_id)
+        if run is None or run.status != "completed" or not run.artifacts:
+            raise RunNotFoundError(str(run_id))
+        return self._artifacts.create_bundle(run_id, run.artifacts)
+
     def _record_history_locked(self, run: StoredRun) -> None:
         if run.status not in {"completed", "failed"}:
             return

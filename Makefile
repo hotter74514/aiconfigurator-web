@@ -61,6 +61,7 @@ docs:
 	@test -f docs/task-057-cache.md
 	@test -f docs/task-058-run-history.md
 	@test -f docs/task-059-multi-user-awareness.md
+	@test -f docs/task-061-artifact-bundle.md
 	@test -x scripts/container-check.sh
 	@test -f k8s/kustomization.yaml
 	@test -f k8s/deployment.yaml
@@ -86,6 +87,7 @@ docs:
 	@test -f docs/decisions/011-timeout-cancellation.md
 	@test -f docs/decisions/013-loki-alloy-log-forwarding.md
 	@test -f docs/decisions/014-run-history.md
+	@test -f docs/decisions/016-artifact-bundle-and-ranked-downloads.md
 
 smoke-configurator:
 	AICONFIGURATOR_IMAGE=$(AICONFIGURATOR_IMAGE) \

@@ -49,3 +49,4 @@ The roadmap follows assignment risk, not feature breadth. Do not begin Bonus wor
 - [x] Deterministic cache
 - [x] Run history
 - [x] Multi-user awareness
+- [x] One-click artifact bundle

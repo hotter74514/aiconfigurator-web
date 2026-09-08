@@ -57,6 +57,12 @@ client-supplied identity headers or claim that run IDs provide authorization.
 Authentication, ownership checks, tenant quotas, and audit events remain
 required before exposing the service to shared or untrusted users.
 
+ADR-016 is accepted for the artifact bundle milestone. Completed runs can
+produce one transient ZIP from their complete allow-listed artifact set; the
+archive preserves relative paths and is deleted after the response. Ranked-row
+links remain disabled until AIConfigurator exposes a stable candidate artifact
+identity.
+
 ## Approval protocol
 
 The architecture owner reviews each record and either marks it **Accepted** or requests changes. If implementation evidence invalidates a decision, stop, explain the new alternatives, and create a superseding ADR. Never silently change an accepted choice.
