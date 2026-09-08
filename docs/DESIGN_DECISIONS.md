@@ -19,6 +19,7 @@ This index tracks the decisions that must be defensible in the interview. The de
 | [013](decisions/013-loki-alloy-log-forwarding.md) | Direct Alloy-to-Loki log forwarding | Accepted |
 | [014](decisions/014-run-history.md) | Bounded process-local run history | Accepted |
 | [015](decisions/015-frontend-ui-refresh.md) | Frontend UI refresh without a new runtime stack | Accepted |
+| [016](decisions/016-artifact-bundle-and-ranked-downloads.md) | One-click artifact bundle and ranked download links | Accepted |
 
 README summaries should link to the ADRs rather than duplicate them.
 
