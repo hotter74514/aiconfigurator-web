@@ -37,6 +37,10 @@ After an ADR is marked **Accepted** by the user, Builder mode may implement it. 
 
 Prefer focused modules, explicit contracts, and reversible changes. Never fake AIConfigurator output in the production path. Test doubles must be isolated and documented. Ask before production deployment, credentials, production data, IAM, destructive operations, or any new infrastructure not covered by an accepted ADR.
 
+## Browser Testing
+
+When a task requires browser-based validation, MUST use `playwright-mcp`. This includes page rendering, responsive viewport behavior, keyboard or accessibility flows, network-driven UI states, downloads, and screenshots. Do not substitute another browser automation tool; if `playwright-mcp` is unavailable, report the blocker instead of silently changing the test method. Record the exercised scenarios and observed results in the relevant task or verification report.
+
 ## Git
 
 Use feature branches (`feat/run-api`, `feat/artifact-download`) and keep an inspectable, incremental history. Create focused Conventional Commits at approved milestones (`feat: add asynchronous run API`, `infra: add kubernetes deployment`, `docs: record design decisions`); do not squash the assignment into one commit or commit directly to `main` unless explicitly requested.
