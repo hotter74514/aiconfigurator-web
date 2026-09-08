@@ -19,6 +19,7 @@ The roadmap follows assignment risk, not feature breadth. Do not begin Bonus wor
 - [x] Submit model, GPU system/type, GPU count, TTFT, and TPOT
 - [x] Poll status and show failure states
 - [x] Show ranked throughput/latency results and estimate warning
+- [x] Refresh the serving-decision UI while preserving the plain Jinja2 boundary
 
 ## P3 — Platform behavior
 

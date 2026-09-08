@@ -6,109 +6,239 @@
     <link rel="icon" href="data:,">
     <title>Serving Configuration Portal</title>
     <style>
-      :root { color-scheme: light; font-family: system-ui, sans-serif; }
-      body { background: #f4f6f8; color: #18212b; margin: 0; }
-      main { background: #fff; margin: 4rem auto; max-width: 58rem; padding: 2rem; }
-      h1 { margin-top: 0; }
-      .lede, .warning { line-height: 1.5; }
-      .warning { background: #fff4d6; border-left: 4px solid #d28a00; padding: .75rem 1rem; }
-      form { display: grid; gap: 1rem; margin-top: 1.5rem; }
-      label { display: grid; gap: .35rem; font-weight: 600; }
-      input { border: 1px solid #9aa7b2; border-radius: .25rem; font: inherit; padding: .6rem; }
-      button { background: #1459a6; border: 0; border-radius: .25rem; color: #fff; cursor: pointer; font: inherit; padding: .7rem 1rem; }
-      button:disabled { cursor: wait; opacity: .7; }
-      #history-panel { border-top: 1px solid #d5dce2; margin-top: 2rem; padding-top: 1.5rem; }
-      #history-status { line-height: 1.5; }
+      :root {
+        color-scheme: light;
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+        --canvas: #f3f6f5;
+        --ink: #17252a;
+        --muted: #5a6a6e;
+        --panel: #ffffff;
+        --line: #d7e0df;
+        --signal: #1769e0;
+        --signal-dark: #0f4da7;
+        --signal-soft: #e8f0ff;
+        --success: #176b50;
+        --danger: #a53b35;
+        --warning: #a86200;
+        --warning-soft: #fff5d8;
+        --accent: #c9ef70;
+        --shadow: 0 1.5rem 3rem rgba(23, 37, 42, .08);
+      }
+
+      *, *::before, *::after { box-sizing: border-box; }
+      html { background: var(--canvas); }
+      body { background: var(--canvas); color: var(--ink); margin: 0; min-width: 20rem; }
+      body, input, button { font: inherit; }
+      h1, h2, h3, p { margin-top: 0; }
+      h1, h2, h3 { letter-spacing: -.02em; }
+      p, li, th, td { line-height: 1.55; }
+      a { color: var(--signal-dark); }
+      button, input { border-radius: .65rem; }
+      button { cursor: pointer; }
+      button:disabled { cursor: wait; opacity: .68; }
+      button:focus-visible, input:focus-visible, a:focus-visible, circle:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 3px;
+      }
+
+      .site-header { background: var(--ink); color: #f7fbfa; }
+      .header-inner { align-items: center; display: flex; gap: 2rem; justify-content: space-between; margin: 0 auto; max-width: 92rem; padding: 1.25rem clamp(1rem, 4vw, 4rem); }
+      .brand-lockup { align-items: center; display: flex; gap: .85rem; min-width: 0; }
+      .brand-mark { align-items: center; background: var(--accent); color: var(--ink); display: flex; flex: 0 0 2.8rem; font-size: .88rem; font-weight: 800; height: 2.8rem; justify-content: center; letter-spacing: .04em; }
+      .brand-lockup h1 { font-size: clamp(1.1rem, 2vw, 1.45rem); margin: .15rem 0 0; }
+      .eyebrow { color: #8fa4a7; font-size: .72rem; letter-spacing: .08em; margin-bottom: 0; }
+      .header-meta { align-items: flex-end; display: flex; flex-direction: column; gap: .35rem; text-align: right; }
+      .environment-badge { background: rgba(201, 239, 112, .15); border: 1px solid rgba(201, 239, 112, .45); border-radius: 999px; color: var(--accent); font-size: .78rem; font-weight: 700; padding: .35rem .7rem; }
+      .header-note { color: #b7c4c5; font-size: .78rem; }
+
+      main { margin: 0 auto; max-width: 92rem; padding: clamp(1.25rem, 4vw, 4rem) clamp(1rem, 4vw, 4rem) 5rem; }
+      .hero { align-items: end; display: flex; gap: 2rem; justify-content: space-between; margin-bottom: 2rem; }
+      .hero h2 { font-size: clamp(1.8rem, 4vw, 3.2rem); line-height: 1.04; margin-bottom: .85rem; max-width: 27ch; }
+      .hero-copy { color: var(--muted); font-size: 1.03rem; margin-bottom: 0; max-width: 62ch; }
+      .hero-index { color: var(--signal-dark); font-size: .82rem; font-weight: 700; letter-spacing: .04em; margin-bottom: .25rem; }
+      .workspace-grid { align-items: start; display: grid; gap: 1.5rem; grid-template-columns: minmax(17rem, 21rem) minmax(0, 1fr); }
+      .control-column { position: sticky; top: 1rem; }
+      .output-column { min-width: 0; }
+      .panel, .guide-panel { background: var(--panel); border: 1px solid var(--line); border-radius: 1rem; box-shadow: var(--shadow); }
+      .control-panel { background: var(--ink); border-color: var(--ink); color: #f7fbfa; padding: 1.35rem; }
+      .panel-heading { align-items: start; display: flex; gap: 1rem; justify-content: space-between; }
+      .panel-heading h2, .panel-heading h3 { font-size: 1.15rem; margin-bottom: .35rem; }
+      .panel-heading p { color: var(--muted); font-size: .87rem; margin-bottom: 0; }
+      .control-panel .panel-heading p { color: #adbec0; }
+      .panel-kicker { color: var(--signal-dark); font-size: .72rem; font-weight: 800; letter-spacing: .08em; margin-bottom: .5rem; text-transform: uppercase; }
+      .control-panel .panel-kicker { color: var(--accent); }
+      .form-grid { display: grid; gap: .9rem; margin-top: 1.4rem; }
+      .field { display: grid; gap: .38rem; }
+      .field > span { color: #dce8e8; font-size: .83rem; font-weight: 700; }
+      .field-help { color: #9fb2b4; font-size: .75rem; }
+      input { background: #25383d; border: 1px solid #5d777a; color: #f7fbfa; min-height: 2.75rem; padding: .65rem .75rem; width: 100%; }
+      input:hover { border-color: #8ca5a6; }
+      input:focus-visible { outline-color: var(--accent); }
+      .primary-action { background: var(--signal); border: 1px solid #4d8cf0; color: #fff; font-weight: 800; margin-top: .35rem; min-height: 3rem; padding: .75rem 1rem; width: 100%; }
+      .primary-action:hover { background: #2b79ec; }
+      #submit-status { border-top: 1px solid #3c5559; color: #cbdada; min-height: 1.7rem; padding-top: .75rem; }
+      #submit-status[data-state="error"] { color: #ffb8ad; }
+      #submit-status[data-state="completed"] { color: var(--accent); }
+      #submit-status[data-state="loading"]::before { background: var(--accent); border-radius: 50%; content: ""; display: inline-block; height: .5rem; margin: 0 .45rem .05rem 0; width: .5rem; }
+
+      .guide-panel { padding: clamp(1.25rem, 3vw, 2rem); }
+      .guide-panel h2 { font-size: clamp(1.35rem, 3vw, 2rem); margin-bottom: .55rem; }
+      .guide-panel > p { color: var(--muted); max-width: 60ch; }
+      .guide-list { counter-reset: guide-step; display: grid; gap: .85rem; list-style: none; margin: 1.5rem 0 0; padding: 0; }
+      .guide-list li { align-items: start; border-top: 1px solid var(--line); counter-increment: guide-step; display: grid; gap: .8rem; grid-template-columns: 2rem minmax(0, 1fr); padding-top: .9rem; }
+      .guide-list li::before { color: var(--signal-dark); content: counter(guide-step, decimal-leading-zero); font-size: .8rem; font-weight: 800; }
+      .guide-list strong { display: block; margin-bottom: .15rem; }
+      .guide-list span { color: var(--muted); font-size: .88rem; }
+
+      .estimate-note { background: var(--warning-soft); border: 1px solid #e9ca7a; border-left: .35rem solid var(--warning); border-radius: .65rem; color: #593b0a; line-height: 1.5; margin: 1.25rem 0 0; padding: .8rem 1rem; }
+      #history-panel, #results-panel { margin-top: 1.5rem; padding: clamp(1.25rem, 3vw, 2rem); }
+      #history-status { color: var(--muted); }
       #history-table button { padding: .45rem .7rem; }
-      .history-failed { color: #a12622; font-weight: 600; }
-      .history-unavailable { color: #8a5a00; }
-      #submit-status { min-height: 1.5rem; }
-      #submit-status[data-state="error"] { color: #a12622; }
-      #submit-status[data-state="completed"] { color: #176b38; }
-      #results-panel { border-top: 1px solid #d5dce2; margin-top: 2rem; padding-top: 1.5rem; }
+      .history-failed, .sla-fail { color: var(--danger); font-weight: 750; }
+      .history-unavailable { color: var(--warning); font-weight: 650; }
+      .section-heading { align-items: end; display: flex; gap: 1rem; justify-content: space-between; }
+      .section-heading h2 { font-size: clamp(1.3rem, 2vw, 1.8rem); margin-bottom: .35rem; }
+      .section-heading p { color: var(--muted); font-size: .88rem; margin-bottom: 0; }
       .table-wrap { overflow-x: auto; }
       table { border-collapse: collapse; min-width: 54rem; width: 100%; }
-      th, td { border-bottom: 1px solid #d5dce2; padding: .6rem; text-align: left; white-space: nowrap; }
-      th { background: #eef2f5; }
-      .sla-pass { color: #176b38; font-weight: 600; }
-      .sla-fail { color: #a12622; font-weight: 600; }
-      .artifact-list { line-height: 1.8; margin-bottom: 0; }
-      #pareto-panel { border-top: 1px solid #d5dce2; margin-top: 2rem; padding-top: 1.5rem; }
+      th, td { border-bottom: 1px solid var(--line); padding: .75rem .65rem; text-align: left; white-space: nowrap; }
+      th { background: #edf3f2; color: #425357; font-size: .78rem; letter-spacing: .02em; position: sticky; top: 0; }
+      tbody tr:hover { background: #f6f9f8; }
+      .sla-pass { color: var(--success); font-weight: 750; }
+      .artifact-list { line-height: 1.8; margin-bottom: 0; overflow-wrap: anywhere; }
+      #artifacts-panel { border-top: 1px solid var(--line); margin-top: 1.5rem; padding-top: 1.25rem; }
+      #artifacts-panel h3 { font-size: 1rem; }
+      #pareto-panel, #comparison-panel { border-top: 1px solid var(--line); margin-top: 2rem; padding-top: 1.5rem; }
+      #pareto-panel h2, #comparison-panel h2 { font-size: 1.2rem; }
       .pareto-wrap { overflow-x: auto; }
-      #pareto-chart { background: #fbfcfd; border: 1px solid #d5dce2; border-radius: .25rem; min-width: 42rem; width: 100%; }
-      .pareto-grid { stroke: #d5dce2; stroke-dasharray: 3 3; }
-      .pareto-axis { stroke: #52606d; stroke-width: 1.5; }
-      .pareto-axis-label, .pareto-tick-label { fill: #34404b; font-size: 12px; }
-      .pareto-frontier-path { fill: none; stroke: #1459a6; stroke-dasharray: 5 4; stroke-width: 2; }
-      .pareto-frontier-point { fill: #1459a6; stroke: #fff; stroke-width: 2; }
-      .pareto-dominated-point { fill: #9aa7b2; stroke: #fff; stroke-width: 2; }
+      #pareto-chart { background: #fbfdfc; border: 1px solid var(--line); border-radius: .65rem; min-width: 42rem; width: 100%; }
+      .pareto-grid { stroke: var(--line); stroke-dasharray: 3 3; }
+      .pareto-axis { stroke: #52646a; stroke-width: 1.5; }
+      .pareto-axis-label, .pareto-tick-label { fill: #34474b; font-size: 12px; }
+      .pareto-frontier-path { fill: none; stroke: var(--signal); stroke-dasharray: 5 4; stroke-width: 2; }
+      .pareto-frontier-point { fill: var(--signal); stroke: #fff; stroke-width: 2; }
+      .pareto-dominated-point { fill: #8ea0a3; stroke: #fff; stroke-width: 2; }
       .pareto-legend { display: flex; flex-wrap: wrap; gap: 1rem; list-style: none; padding: 0; }
       .pareto-legend li { align-items: center; display: flex; gap: .4rem; }
       .pareto-swatch { border-radius: 50%; display: inline-block; height: .75rem; width: .75rem; }
-      .pareto-swatch.frontier { background: #1459a6; }
-      .pareto-swatch.dominated { background: #9aa7b2; }
+      .pareto-swatch.frontier { background: var(--signal); }
+      .pareto-swatch.dominated { background: #8ea0a3; }
       #pareto-frontier-list { line-height: 1.8; }
-      #comparison-panel { border-top: 1px solid #d5dce2; margin-top: 2rem; padding-top: 1.5rem; }
       .comparison-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
-      .comparison-card { background: #fbfcfd; border: 1px solid #d5dce2; border-radius: .25rem; padding: 1rem; }
+      .comparison-card { background: #f8fbfa; border: 1px solid var(--line); border-top: 3px solid var(--signal); border-radius: .65rem; padding: 1rem; }
       .comparison-card h3 { margin-top: 0; }
       .comparison-stats { display: grid; gap: .65rem; margin: 0; }
       .comparison-stat { align-items: baseline; display: flex; gap: .75rem; justify-content: space-between; }
-      .comparison-stat dt { color: #52606d; }
-      .comparison-stat dd { font-weight: 600; margin: 0; text-align: right; }
-      .comparison-status { line-height: 1.5; margin-bottom: 0; }
+      .comparison-stat dt { color: var(--muted); }
+      .comparison-stat dd { font-weight: 750; margin: 0; text-align: right; }
+      .comparison-status { color: var(--muted); line-height: 1.5; margin-bottom: 0; }
       .visually-hidden { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+
+      @media (max-width: 58rem) {
+        .header-inner { align-items: start; flex-direction: column; gap: 1rem; }
+        .header-meta { align-items: start; flex-direction: row; flex-wrap: wrap; text-align: left; }
+        .workspace-grid { grid-template-columns: 1fr; }
+        .control-column { position: static; }
+      }
+
+      @media (max-width: 40rem) {
+        .hero { display: block; }
+        .hero-index { margin-top: 1.25rem; }
+        .section-heading { align-items: start; display: block; }
+        #history-panel, #results-panel { padding: 1rem; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+      }
     </style>
   </head>
   <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true">SC</span>
+          <div>
+            <p class="eyebrow">AIConfigurator / serving estimates</p>
+            <h1>Serving Configuration Portal</h1>
+          </div>
+        </div>
+        <div class="header-meta">
+          <span class="environment-badge">Local demo</span>
+          <span class="header-note">Benchmark before deployment</span>
+        </div>
+      </div>
+    </header>
     <main>
-      <h1>Serving Configuration Portal</h1>
-      <p class="lede">Submit serving constraints and receive AIConfigurator performance estimates.</p>
-      <p class="warning"><strong>Estimate warning:</strong> predictions must be validated with representative real benchmarks before deployment.</p>
-
-      <form id="run-form" data-endpoint="/api/runs">
-        <label for="model">Model
-          <input id="model" name="model" type="text" value="{{ defaults.model }}" required>
-        </label>
-        <label for="system">GPU system
-          <input id="system" name="system" type="text" value="{{ defaults.system }}" required>
-        </label>
-        <label for="total-gpus">Total GPUs
-          <input id="total-gpus" name="total_gpus" type="number" min="1" step="1" value="{{ defaults.total_gpus }}" required>
-        </label>
-        <label for="ttft">TTFT target (ms)
-          <input id="ttft" name="ttft" type="number" min="0.001" step="any" value="{{ defaults.ttft }}" required>
-        </label>
-        <label for="tpot">TPOT target (ms)
-          <input id="tpot" name="tpot" type="number" min="0.001" step="any" value="{{ defaults.tpot }}" required>
-        </label>
-        <button type="submit">Submit configuration run</button>
-        <p id="submit-status" role="status" aria-live="polite"></p>
-      </form>
-      <section id="history-panel" aria-labelledby="history-heading">
-        <h2 id="history-heading">Recent local history</h2>
-        <p>Recent completed and failed runs are kept in this process only. A restart clears this history; artifact links can also expire after the 24-hour local retention window.</p>
-        <p id="history-status" role="status" aria-live="polite">Loading recent runs…</p>
-        <div class="table-wrap">
-          <table id="history-table" hidden>
-            <caption class="visually-hidden">Recent local serving configuration runs</caption>
-            <thead>
-              <tr>
-                <th scope="col">Status</th>
-                <th scope="col">Model / system</th>
-                <th scope="col">Constraints</th>
-                <th scope="col">Created</th>
-                <th scope="col">Artifacts</th>
-                <th scope="col">Action</th>
-              </tr>
-            </thead>
-            <tbody id="history-body"></tbody>
-          </table>
+      <section class="hero" aria-labelledby="workspace-heading">
+        <div>
+          <p class="hero-index">Configuration workspace</p>
+          <h2 id="workspace-heading">Find a serving configuration that fits your targets.</h2>
+          <p class="hero-copy">Set the model, GPU system, and latency constraints. The portal runs AIConfigurator and brings the trade-offs into one decision surface.</p>
         </div>
       </section>
-      <section id="results-panel" hidden aria-labelledby="results-heading">
-        <h2 id="results-heading">Ranked configurations</h2>
-        <p class="warning"><strong>Estimate warning:</strong> predictions must be validated with representative real benchmarks before deployment.</p>
+
+      <div class="workspace-grid">
+        <aside class="control-column">
+          <section id="run-form-panel" class="panel control-panel" aria-labelledby="run-form-heading">
+            <div class="panel-heading">
+              <div>
+                <p class="panel-kicker">01 / Define constraints</p>
+                <h2 id="run-form-heading">Configuration inputs</h2>
+                <p>Use supported model and GPU combinations for useful estimates.</p>
+              </div>
+            </div>
+            <p class="estimate-note" id="estimate-warning"><strong>Estimate warning:</strong> predictions must be validated with representative real benchmarks before deployment.</p>
+            <form id="run-form" data-endpoint="/api/runs" aria-describedby="estimate-warning">
+              <div class="form-grid">
+                <label class="field" for="model">
+                  <span>Model</span>
+                  <input id="model" name="model" type="text" value="{{ defaults.model }}" required>
+                </label>
+                <label class="field" for="system">
+                  <span>GPU system</span>
+                  <input id="system" name="system" type="text" value="{{ defaults.system }}" required>
+                </label>
+                <label class="field" for="total-gpus">
+                  <span>Total GPUs</span>
+                  <input id="total-gpus" name="total_gpus" type="number" min="1" step="1" value="{{ defaults.total_gpus }}" required>
+                </label>
+                <label class="field" for="ttft">
+                  <span>TTFT target (ms)</span>
+                  <input id="ttft" name="ttft" type="number" min="0.001" step="any" value="{{ defaults.ttft }}" required>
+                </label>
+                <label class="field" for="tpot">
+                  <span>TPOT target (ms)</span>
+                  <input id="tpot" name="tpot" type="number" min="0.001" step="any" value="{{ defaults.tpot }}" required>
+                </label>
+                <button class="primary-action" type="submit">Run serving estimate</button>
+                <p id="submit-status" role="status" aria-live="polite"></p>
+              </div>
+            </form>
+          </section>
+        </aside>
+
+        <div class="output-column">
+          <section id="preflight-panel" class="guide-panel" aria-labelledby="preflight-heading">
+            <p class="panel-kicker">02 / Read the output</p>
+            <h2 id="preflight-heading">A focused comparison, not a black box.</h2>
+            <p>Each completed run keeps the result contract visible so you can explain why a configuration ranked where it did.</p>
+            <ol class="guide-list">
+              <li><div><strong>Watch the run state</strong><span>Queued and running states stay visible while the real CLI executes.</span></div></li>
+              <li><div><strong>Compare the frontier</strong><span>Use throughput, latency, SLA status, and the Pareto view together.</span></div></li>
+              <li><div><strong>Download the artifact</strong><span>Deployment files remain local and ephemeral for this controlled demo.</span></div></li>
+            </ol>
+          </section>
+
+          <section id="results-panel" class="panel" hidden aria-labelledby="results-heading">
+            <div class="section-heading">
+              <div>
+                <p class="panel-kicker">03 / Ranked output</p>
+                <h2 id="results-heading">Ranked configurations</h2>
+              </div>
+              <p>Compare the estimates before validating them on the target stack.</p>
+            </div>
+            <p class="estimate-note" id="results-estimate-warning"><strong>Estimate warning:</strong> predictions must be validated with representative real benchmarks before deployment.</p>
         <div class="table-wrap">
           <table id="results-table">
             <caption class="visually-hidden">AIConfigurator ranked serving configuration estimates</caption>
@@ -129,7 +259,12 @@
           </table>
         </div>
         <section id="pareto-panel" hidden aria-labelledby="pareto-heading">
-          <h2 id="pareto-heading">Pareto frontier</h2>
+          <div class="section-heading">
+            <div>
+              <p class="panel-kicker">Trade-off surface</p>
+              <h2 id="pareto-heading">Pareto frontier</h2>
+            </div>
+          </div>
           <p>Throughput vs. request latency: points on the frontier have no other candidate that is both faster and higher-throughput.</p>
           <ul class="pareto-legend" aria-label="Chart legend">
             <li><span class="pareto-swatch frontier" aria-hidden="true"></span> Pareto frontier</li>
@@ -145,7 +280,12 @@
           <ul id="pareto-frontier-list"></ul>
         </section>
         <section id="comparison-panel" hidden aria-labelledby="comparison-heading">
-          <h2 id="comparison-heading">Aggregate vs. disaggregated</h2>
+          <div class="section-heading">
+            <div>
+              <p class="panel-kicker">Mode comparison</p>
+              <h2 id="comparison-heading">Aggregate vs. disaggregated</h2>
+            </div>
+          </div>
           <p>These summaries compare only candidates that meet both requested targets. They are model-based estimates, not a deployment recommendation.</p>
           <div class="comparison-grid">
             <article class="comparison-card" id="agg-comparison-card">
@@ -174,6 +314,36 @@
         <div id="artifacts-panel">
           <h3>Deployment artifacts</h3>
           <ul id="artifact-list" class="artifact-list"></ul>
+        </div>
+      </section>
+        </div>
+      </div>
+
+      <section id="history-panel" class="panel" aria-labelledby="history-heading">
+        <div class="section-heading">
+          <div>
+            <p class="panel-kicker">Recent context</p>
+            <h2 id="history-heading">Recent local history</h2>
+          </div>
+          <p>Useful for this process only; it is not durable storage.</p>
+        </div>
+        <p>Recent completed and failed runs are kept in this process only. A restart clears this history; artifact links can also expire after the 24-hour local retention window.</p>
+        <p id="history-status" role="status" aria-live="polite">Loading recent runs…</p>
+        <div class="table-wrap">
+          <table id="history-table" hidden>
+            <caption class="visually-hidden">Recent local serving configuration runs</caption>
+            <thead>
+              <tr>
+                <th scope="col">Status</th>
+                <th scope="col">Model / system</th>
+                <th scope="col">Constraints</th>
+                <th scope="col">Created</th>
+                <th scope="col">Artifacts</th>
+                <th scope="col">Action</th>
+              </tr>
+            </thead>
+            <tbody id="history-body"></tbody>
+          </table>
         </div>
       </section>
     </main>

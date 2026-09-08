@@ -79,3 +79,21 @@ def test_index_contains_recent_local_history_contract() -> None:
     assert "Recent local history" in response.text
     assert "loadHistory" in response.text
     assert "artifacts_unavailable" in response.text
+
+
+def test_index_contains_ui_refresh_shell_and_accessibility_contract() -> None:
+    client = TestClient(create_app(RunManager(start_workers=False)))
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'class="site-header"' in response.text
+    assert 'class="workspace-grid"' in response.text
+    assert 'id="run-form-panel"' in response.text
+    assert 'id="preflight-panel"' in response.text
+    assert 'id="estimate-warning"' in response.text
+    assert 'aria-describedby="estimate-warning"' in response.text
+    assert 'class="primary-action"' in response.text
+    assert '@media (max-width: 58rem)' in response.text
+    assert 'prefers-reduced-motion' in response.text
+    assert 'rel="stylesheet"' not in response.text

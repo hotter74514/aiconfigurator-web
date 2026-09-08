@@ -18,6 +18,7 @@ This index tracks the decisions that must be defensible in the interview. The de
 | [012](decisions/012-local-observability-stack.md) | Minikube local observability stack | Accepted |
 | [013](decisions/013-loki-alloy-log-forwarding.md) | Direct Alloy-to-Loki log forwarding | Accepted |
 | [014](decisions/014-run-history.md) | Bounded process-local run history | Accepted |
+| [015](decisions/015-frontend-ui-refresh.md) | Frontend UI refresh without a new runtime stack | Accepted |
 
 README summaries should link to the ADRs rather than duplicate them.
 
