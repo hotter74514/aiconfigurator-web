@@ -51,12 +51,16 @@ git diff --check
 The full Python suite passed with 60 tests. The inline JavaScript syntax and
 HTML ID contract checks passed. `make check`, `make k8s-render`, and
 `make container-check` passed; the container check verified the Linux/amd64
-runtime image's `/live`, `/ready`, and `/metrics` endpoints. The local Browser
-runtime was unavailable in this environment (no browser instances were
-returned), so interactive viewport screenshots and keyboard traversal remain a
-follow-up verification when a browser instance is available. Existing
-Docker/Minikube demo evidence remains valid because this change does not alter
-the runtime or API path.
+runtime image's `/live`, `/ready`, and `/metrics` endpoints. `playwright-mcp`
+then verified the live page at 1440px, 768px, and 360px widths. At 360px the
+document `scrollWidth` matched the 360px viewport width, so the responsive shell
+did not introduce horizontal page overflow. Keyboard Tab traversal reached the
+five inputs and the submit button in order, with a visible focus outline. A
+browser-side mocked completed response rendered the ranked table, Pareto chart,
+mode comparison, and encoded artifact link; the browser console reported zero
+errors. The mock was used only to exercise browser rendering and is not part of
+the production path. Existing Docker/Minikube demo evidence remains valid
+because this change does not alter the runtime or API path.
 
 ## Known limitation
 
