@@ -41,6 +41,18 @@ Prefer focused modules, explicit contracts, and reversible changes. Never fake A
 
 Use feature branches (`feat/run-api`, `feat/artifact-download`) and keep an inspectable, incremental history. Create focused Conventional Commits at approved milestones (`feat: add asynchronous run API`, `infra: add kubernetes deployment`, `docs: record design decisions`); do not squash the assignment into one commit or commit directly to `main` unless explicitly requested.
 
+Every commit must include a descriptive body with a blank line after the subject and a bullet list of the substantive changes, for example:
+
+```text
+feat: refresh serving decision portal UI
+
+- Add the responsive serving-decision console layout.
+- Preserve the self-contained Jinja2 and native JavaScript boundary.
+- Add regression coverage for the refreshed page.
+```
+
+The bullets must describe the actual changes in that commit; do not leave the body empty or rely on the subject alone.
+
 ## Completion Gate
 
 Before handoff, run applicable formatter, linter, type checker, unit/integration tests, container/Kubernetes checks, `make check`, and `git diff --check`. Exercise the demo path: submit a run, poll status, inspect ranked results, download an artifact, and show probes/metrics. Report exact commands, results, changed files, assumptions, and known limitations.
