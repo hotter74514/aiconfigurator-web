@@ -20,6 +20,7 @@ The roadmap follows assignment risk, not feature breadth. Do not begin Bonus wor
 - [x] Poll status and show failure states
 - [x] Show ranked throughput/latency results and estimate warning
 - [x] Refresh the serving-decision UI while preserving the plain Jinja2 boundary
+- [x] Load model/GPU choices from the installed AIConfigurator support matrix
 
 ## P3 — Platform behavior
 

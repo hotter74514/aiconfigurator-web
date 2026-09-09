@@ -62,6 +62,7 @@ docs:
 	@test -f docs/task-058-run-history.md
 	@test -f docs/task-059-multi-user-awareness.md
 	@test -f docs/task-061-artifact-bundle.md
+	@test -f docs/task-062-support-selectors.md
 	@test -x scripts/container-check.sh
 	@test -f k8s/kustomization.yaml
 	@test -f k8s/deployment.yaml

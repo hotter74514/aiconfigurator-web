@@ -36,7 +36,7 @@
       button, input { border-radius: .65rem; }
       button { cursor: pointer; }
       button:disabled { cursor: wait; opacity: .68; }
-      button:focus-visible, input:focus-visible, a:focus-visible, circle:focus-visible {
+      button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible, circle:focus-visible {
         outline: 3px solid var(--accent);
         outline-offset: 3px;
       }
@@ -71,8 +71,8 @@
       .field { display: grid; gap: .38rem; }
       .field > span { color: #dce8e8; font-size: .83rem; font-weight: 700; }
       .field-help { color: #9fb2b4; font-size: .75rem; }
-      input { background: #25383d; border: 1px solid #5d777a; color: #f7fbfa; min-height: 2.75rem; padding: .65rem .75rem; width: 100%; }
-      input:hover { border-color: #8ca5a6; }
+      input, select { background: #25383d; border: 1px solid #5d777a; color: #f7fbfa; min-height: 2.75rem; padding: .65rem .75rem; width: 100%; }
+      input:hover, select:hover { border-color: #8ca5a6; }
       input:focus-visible { outline-color: var(--accent); }
       .primary-action { background: var(--signal); border: 1px solid #4d8cf0; color: #fff; font-weight: 800; margin-top: .35rem; min-height: 3rem; padding: .75rem 1rem; width: 100%; }
       .primary-action:hover { background: #2b79ec; }
@@ -197,12 +197,17 @@
               <div class="form-grid">
                 <label class="field" for="model">
                   <span>Model</span>
-                  <input id="model" name="model" type="text" value="{{ defaults.model }}" required>
+                  <select id="model" name="model" required>
+                    <option value="{{ defaults.model }}">{{ defaults.model }}</option>
+                  </select>
                 </label>
                 <label class="field" for="system">
                   <span>GPU system</span>
-                  <input id="system" name="system" type="text" value="{{ defaults.system }}" required>
+                  <select id="system" name="system" required>
+                    <option value="{{ defaults.system }}">{{ defaults.system }}</option>
+                  </select>
                 </label>
+                <p id="support-status" class="field-help" role="status" aria-live="polite">Loading installed support matrix…</p>
                 <label class="field" for="total-gpus">
                   <span>Total GPUs</span>
                   <input id="total-gpus" name="total_gpus" type="number" min="1" step="1" value="{{ defaults.total_gpus }}" required>
@@ -358,6 +363,9 @@
       const form = document.querySelector("#run-form");
       const status = document.querySelector("#submit-status");
       const submitButton = form.querySelector("button");
+      const modelSelect = document.querySelector("#model");
+      const systemSelect = document.querySelector("#system");
+      const supportStatus = document.querySelector("#support-status");
       const historyStatus = document.querySelector("#history-status");
       const historyTable = document.querySelector("#history-table");
       const historyBody = document.querySelector("#history-body");
@@ -374,6 +382,7 @@
       const POLL_INTERVAL_MS = 2000;
       let pollTimer = null;
       let pollGeneration = 0;
+      let supportPairs = [];
 
       function setStatus(message, state, busy) {
         status.textContent = message;
@@ -407,6 +416,54 @@
       function formatTimestamp(value) {
         const date = new Date(value);
         return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+      }
+
+      function replaceSelectOptions(select, values, selectedValue) {
+        select.replaceChildren();
+        for (const value of values) {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = value;
+          select.append(option);
+        }
+        if (values.includes(selectedValue)) {
+          select.value = selectedValue;
+        } else if (values.length > 0) {
+          select.value = values[0];
+        }
+      }
+
+      function updateSystemOptions(preferredSystem = systemSelect.value) {
+        const systems = [...new Set(
+          supportPairs
+            .filter((pair) => pair.model === modelSelect.value)
+            .map((pair) => pair.system)
+        )].sort();
+        replaceSelectOptions(systemSelect, systems, preferredSystem);
+        systemSelect.disabled = systems.length === 0;
+      }
+
+      async function loadSupportMatrix() {
+        try {
+          const response = await fetch("/api/support");
+          const body = await response.json();
+          if (!response.ok || !Array.isArray(body.models) || !Array.isArray(body.pairs)) {
+            throw new Error("The support matrix could not be loaded.");
+          }
+          supportPairs = body.pairs.filter((pair) =>
+            typeof pair.model === "string" && typeof pair.system === "string"
+          );
+          const selectedModel = modelSelect.value;
+          const selectedSystem = systemSelect.value;
+          replaceSelectOptions(modelSelect, body.models, selectedModel);
+          updateSystemOptions(selectedSystem);
+          const version = body.aiconfigurator_version
+            ? ` AIConfigurator ${body.aiconfigurator_version}.`
+            : "";
+          supportStatus.textContent = `${body.models.length} models and ${body.systems.length} GPU systems available for ${body.backend || "the default backend"}.${version}`;
+        } catch (error) {
+          supportStatus.textContent = "Support matrix unavailable; the default model and GPU system remain selectable.";
+        }
       }
 
       function isParetoDominated(candidate, candidates) {
@@ -900,6 +957,8 @@
         }
       });
 
+      modelSelect.addEventListener("change", () => updateSystemOptions());
+      loadSupportMatrix();
       loadHistory();
     </script>
   </body>

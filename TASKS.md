@@ -24,6 +24,7 @@ Work strictly in priority order. Architect tasks produce accepted ADRs; Builder 
 - [x] **TASK-021** — Poll run status and render loading/error states *(see [polling report](docs/task-021-polling.md))
 - [x] **TASK-022** — Render ranked results and estimate warning *(see [results report](docs/task-022-results.md))
 - [x] **TASK-023** — Refresh the serving-decision UI without a new frontend runtime *(see [UI refresh report](docs/task-060-ui-refresh.md))
+- [x] **TASK-062** — Load AIConfigurator support-matrix model/GPU selectors *(see [support selector report](docs/task-062-support-selectors.md))
 
 ## P3 — Operations and failure modes
 

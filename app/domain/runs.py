@@ -42,6 +42,23 @@ class RunStatusResponse(BaseModel):
     artifacts: list[str] | None = None
 
 
+class SupportPairResponse(BaseModel):
+    model: str
+    system: str
+    status: Literal["PASS", "HYBRID_PASS"]
+
+
+class SupportMatrixResponse(BaseModel):
+    """Selectable model/system combinations from the installed AIConfigurator."""
+
+    backend: str
+    source: Literal["installed-wheel", "fallback-default"]
+    aiconfigurator_version: str | None = None
+    models: list[str]
+    systems: list[str]
+    pairs: list[SupportPairResponse]
+
+
 class RunHistoryItem(BaseModel):
     """A recent terminal run exposed by the process-local history API."""
 
