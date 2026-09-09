@@ -1,0 +1,10 @@
+.git
+.github
+.codex
+.venv
+.tmp
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+IMPLEMENTATION_PLAN.md

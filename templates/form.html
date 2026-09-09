@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,">
+    <title>Serving Configuration Portal</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+        --canvas: #f3f6f5;
+        --ink: #17252a;
+        --muted: #5a6a6e;
+        --panel: #ffffff;
+        --line: #d7e0df;
+        --signal: #1769e0;
+        --signal-dark: #0f4da7;
+        --signal-soft: #e8f0ff;
+        --success: #176b50;
+        --danger: #a53b35;
+        --warning: #a86200;
+        --warning-soft: #fff5d8;
+        --accent: #c9ef70;
+        --shadow: 0 1.5rem 3rem rgba(23, 37, 42, .08);
+      }
+
+      *, *::before, *::after { box-sizing: border-box; }
+      html { background: var(--canvas); }
+      body { background: var(--canvas); color: var(--ink); margin: 0; min-width: 20rem; }
+      body, input, button { font: inherit; }
+      h1, h2, h3, p { margin-top: 0; }
+      h1, h2, h3 { letter-spacing: -.02em; }
+      p, li, th, td { line-height: 1.55; }
+      a { color: var(--signal-dark); }
+      button, input { border-radius: .65rem; }
+      button { cursor: pointer; }
+      button:disabled { cursor: wait; opacity: .68; }
+      button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible, circle:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 3px;
+      }
+
+      .site-header { background: var(--ink); color: #f7fbfa; }
+      .header-inner { align-items: center; display: flex; gap: 2rem; justify-content: space-between; margin: 0 auto; max-width: 92rem; padding: 1.25rem clamp(1rem, 4vw, 4rem); }
+      .brand-lockup { align-items: center; display: flex; gap: .85rem; min-width: 0; }
+      .brand-mark { align-items: center; background: var(--accent); color: var(--ink); display: flex; flex: 0 0 2.8rem; font-size: .88rem; font-weight: 800; height: 2.8rem; justify-content: center; letter-spacing: .04em; }
+      .brand-lockup h1 { font-size: clamp(1.1rem, 2vw, 1.45rem); margin: .15rem 0 0; }
+      .eyebrow { color: #8fa4a7; font-size: .72rem; letter-spacing: .08em; margin-bottom: 0; }
+      .header-meta { align-items: flex-end; display: flex; flex-direction: column; gap: .35rem; text-align: right; }
+      .environment-badge { background: rgba(201, 239, 112, .15); border: 1px solid rgba(201, 239, 112, .45); border-radius: 999px; color: var(--accent); font-size: .78rem; font-weight: 700; padding: .35rem .7rem; }
+      .header-note { color: #b7c4c5; font-size: .78rem; }
+
+      main { margin: 0 auto; max-width: 92rem; padding: clamp(1.25rem, 4vw, 4rem) clamp(1rem, 4vw, 4rem) 5rem; }
+      .hero { align-items: end; display: flex; gap: 2rem; justify-content: space-between; margin-bottom: 2rem; }
+      .hero h2 { font-size: clamp(1.8rem, 4vw, 3.2rem); line-height: 1.04; margin-bottom: .85rem; max-width: 27ch; }
+      .hero-copy { color: var(--muted); font-size: 1.03rem; margin-bottom: 0; max-width: 62ch; }
+      .hero-index { color: var(--signal-dark); font-size: .82rem; font-weight: 700; letter-spacing: .04em; margin-bottom: .25rem; }
+      .workspace-grid { align-items: start; display: grid; gap: 1.5rem; grid-template-columns: minmax(17rem, 21rem) minmax(0, 1fr); }
+      .control-column { position: sticky; top: 1rem; }
+      .output-column { min-width: 0; }
+      .panel, .guide-panel { background: var(--panel); border: 1px solid var(--line); border-radius: 1rem; box-shadow: var(--shadow); }
+      .control-panel { background: var(--ink); border-color: var(--ink); color: #f7fbfa; padding: 1.35rem; }
+      .panel-heading { align-items: start; display: flex; gap: 1rem; justify-content: space-between; }
+      .panel-heading h2, .panel-heading h3 { font-size: 1.15rem; margin-bottom: .35rem; }
+      .panel-heading p { color: var(--muted); font-size: .87rem; margin-bottom: 0; }
+      .control-panel .panel-heading p { color: #adbec0; }
+      .panel-kicker { color: var(--signal-dark); font-size: .72rem; font-weight: 800; letter-spacing: .08em; margin-bottom: .5rem; text-transform: uppercase; }
+      .control-panel .panel-kicker { color: var(--accent); }
+      .form-grid { display: grid; gap: .9rem; margin-top: 1.4rem; }
+      .field { display: grid; gap: .38rem; }
+      .field > span { color: #dce8e8; font-size: .83rem; font-weight: 700; }
+      .field-help { color: #9fb2b4; font-size: .75rem; }
+      input, select { background: #25383d; border: 1px solid #5d777a; color: #f7fbfa; min-height: 2.75rem; padding: .65rem .75rem; width: 100%; }
+      input:hover, select:hover { border-color: #8ca5a6; }
+      input:focus-visible { outline-color: var(--accent); }
+      .primary-action { background: var(--signal); border: 1px solid #4d8cf0; color: #fff; font-weight: 800; margin-top: .35rem; min-height: 3rem; padding: .75rem 1rem; width: 100%; }
+      .primary-action:hover { background: #2b79ec; }
+      #submit-status { border-top: 1px solid #3c5559; color: #cbdada; min-height: 1.7rem; padding-top: .75rem; }
+      #submit-status[data-state="error"] { color: #ffb8ad; }
+      #submit-status[data-state="completed"] { color: var(--accent); }
+      #submit-status[data-state="loading"]::before { background: var(--accent); border-radius: 50%; content: ""; display: inline-block; height: .5rem; margin: 0 .45rem .05rem 0; width: .5rem; }
+
+      .guide-panel { padding: clamp(1.25rem, 3vw, 2rem); }
+      .guide-panel h2 { font-size: clamp(1.35rem, 3vw, 2rem); margin-bottom: .55rem; }
+      .guide-panel > p { color: var(--muted); max-width: 60ch; }
+      .guide-list { counter-reset: guide-step; display: grid; gap: .85rem; list-style: none; margin: 1.5rem 0 0; padding: 0; }
+      .guide-list li { align-items: start; border-top: 1px solid var(--line); counter-increment: guide-step; display: grid; gap: .8rem; grid-template-columns: 2rem minmax(0, 1fr); padding-top: .9rem; }
+      .guide-list li::before { color: var(--signal-dark); content: counter(guide-step, decimal-leading-zero); font-size: .8rem; font-weight: 800; }
+      .guide-list strong { display: block; margin-bottom: .15rem; }
+      .guide-list span { color: var(--muted); font-size: .88rem; }
+
+      .estimate-note { background: var(--warning-soft); border: 1px solid #e9ca7a; border-left: .35rem solid var(--warning); border-radius: .65rem; color: #593b0a; line-height: 1.5; margin: 1.25rem 0 0; padding: .8rem 1rem; }
+      #history-panel, #results-panel { margin-top: 1.5rem; padding: clamp(1.25rem, 3vw, 2rem); }
+      #history-status { color: var(--muted); }
+      #history-table button { padding: .45rem .7rem; }
+      .history-failed, .sla-fail { color: var(--danger); font-weight: 750; }
+      .history-unavailable { color: var(--warning); font-weight: 650; }
+      .section-heading { align-items: end; display: flex; gap: 1rem; justify-content: space-between; }
+      .section-heading h2 { font-size: clamp(1.3rem, 2vw, 1.8rem); margin-bottom: .35rem; }
+      .section-heading p { color: var(--muted); font-size: .88rem; margin-bottom: 0; }
+      .table-wrap { overflow-x: auto; }
+      table { border-collapse: collapse; min-width: 54rem; width: 100%; }
+      th, td { border-bottom: 1px solid var(--line); padding: .75rem .65rem; text-align: left; white-space: nowrap; }
+      th { background: #edf3f2; color: #425357; font-size: .78rem; letter-spacing: .02em; position: sticky; top: 0; }
+      tbody tr:hover { background: #f6f9f8; }
+      .sla-pass { color: var(--success); font-weight: 750; }
+      .artifact-list { line-height: 1.8; margin-bottom: 0; overflow-wrap: anywhere; }
+      #artifacts-panel { border-top: 1px solid var(--line); margin-top: 1.5rem; padding-top: 1.25rem; }
+      #artifacts-panel h3 { font-size: 1rem; }
+      .artifact-actions { margin-bottom: .75rem; }
+      .artifact-bundle { background: var(--signal); border: 1px solid var(--signal-dark); border-radius: .65rem; color: #fff; display: inline-block; font-weight: 750; padding: .6rem .85rem; text-decoration: none; }
+      .artifact-bundle:hover { background: var(--signal-dark); }
+      .artifact-bundle[hidden] { display: none; }
+      #pareto-panel, #comparison-panel { border-top: 1px solid var(--line); margin-top: 2rem; padding-top: 1.5rem; }
+      #pareto-panel h2, #comparison-panel h2 { font-size: 1.2rem; }
+      .pareto-wrap { overflow-x: auto; }
+      #pareto-chart { background: #fbfdfc; border: 1px solid var(--line); border-radius: .65rem; min-width: 42rem; width: 100%; }
+      .pareto-grid { stroke: var(--line); stroke-dasharray: 3 3; }
+      .pareto-axis { stroke: #52646a; stroke-width: 1.5; }
+      .pareto-axis-label, .pareto-tick-label { fill: #34474b; font-size: 12px; }
+      .pareto-frontier-path { fill: none; stroke: var(--signal); stroke-dasharray: 5 4; stroke-width: 2; }
+      .pareto-frontier-point { fill: var(--signal); stroke: #fff; stroke-width: 2; }
+      .pareto-dominated-point { fill: #8ea0a3; stroke: #fff; stroke-width: 2; }
+      .pareto-legend { display: flex; flex-wrap: wrap; gap: 1rem; list-style: none; padding: 0; }
+      .pareto-legend li { align-items: center; display: flex; gap: .4rem; }
+      .pareto-swatch { border-radius: 50%; display: inline-block; height: .75rem; width: .75rem; }
+      .pareto-swatch.frontier { background: var(--signal); }
+      .pareto-swatch.dominated { background: #8ea0a3; }
+      #pareto-frontier-list { line-height: 1.8; }
+      .comparison-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+      .comparison-card { background: #f8fbfa; border: 1px solid var(--line); border-top: 3px solid var(--signal); border-radius: .65rem; padding: 1rem; }
+      .comparison-card h3 { margin-top: 0; }
+      .comparison-stats { display: grid; gap: .65rem; margin: 0; }
+      .comparison-stat { align-items: baseline; display: flex; gap: .75rem; justify-content: space-between; }
+      .comparison-stat dt { color: var(--muted); }
+      .comparison-stat dd { font-weight: 750; margin: 0; text-align: right; }
+      .comparison-status { color: var(--muted); line-height: 1.5; margin-bottom: 0; }
+      .visually-hidden { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+
+      @media (max-width: 58rem) {
+        .header-inner { align-items: start; flex-direction: column; gap: 1rem; }
+        .header-meta { align-items: start; flex-direction: row; flex-wrap: wrap; text-align: left; }
+        .workspace-grid { grid-template-columns: 1fr; }
+        .control-column { position: static; }
+      }
+
+      @media (max-width: 40rem) {
+        .hero { display: block; }
+        .hero-index { margin-top: 1.25rem; }
+        .section-heading { align-items: start; display: block; }
+        #history-panel, #results-panel { padding: 1rem; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true">SC</span>
+          <div>
+            <p class="eyebrow">AIConfigurator / serving estimates</p>
+            <h1>Serving Configuration Portal</h1>
+          </div>
+        </div>
+        <div class="header-meta">
+          <span class="environment-badge">Local demo</span>
+          <span class="header-note">Benchmark before deployment</span>
+        </div>
+      </div>
+    </header>
+    <main>
+      <section class="hero" aria-labelledby="workspace-heading">
+        <div>
+          <p class="hero-index">Configuration workspace</p>
+          <h2 id="workspace-heading">Find a serving configuration that fits your targets.</h2>
+          <p class="hero-copy">Set the model, GPU system, and latency constraints. The portal runs AIConfigurator and brings the trade-offs into one decision surface.</p>
+        </div>
+      </section>
+
+      <div class="workspace-grid">
+        <aside class="control-column">
+          <section id="run-form-panel" class="panel control-panel" aria-labelledby="run-form-heading">
+            <div class="panel-heading">
+              <div>
+                <p class="panel-kicker">01 / Define constraints</p>
+                <h2 id="run-form-heading">Configuration inputs</h2>
+                <p>Use supported model and GPU combinations for useful estimates.</p>
+              </div>
+            </div>
+            <p class="estimate-note" id="estimate-warning"><strong>Estimate warning:</strong> predictions must be validated with representative real benchmarks before deployment.</p>
+            <form id="run-form" data-endpoint="/api/runs" aria-describedby="estimate-warning">
+              <div class="form-grid">
+                <label class="field" for="model">
+                  <span>Model</span>
+                  <select id="model" name="model" required>
+                    <option value="{{ defaults.model }}">{{ defaults.model }}</option>
+                  </select>
+                </label>
+                <label class="field" for="system">
+                  <span>GPU system</span>
+                  <select id="system" name="system" required>
+                    <option value="{{ defaults.system }}">{{ defaults.system }}</option>
+                  </select>
+                </label>
+                <p id="support-status" class="field-help" role="status" aria-live="polite">Loading installed support matrix…</p>
+                <label class="field" for="total-gpus">
+                  <span>Total GPUs</span>
+                  <input id="total-gpus" name="total_gpus" type="number" min="1" step="1" value="{{ defaults.total_gpus }}" required>
+                </label>
+                <label class="field" for="ttft">
+                  <span>TTFT target (ms)</span>
+                  <input id="ttft" name="ttft" type="number" min="0.001" step="any" value="{{ defaults.ttft }}" required>
+                </label>
+                <label class="field" for="tpot">
+                  <span>TPOT target (ms)</span>
+                  <input id="tpot" name="tpot" type="number" min="0.001" step="any" value="{{ defaults.tpot }}" required>
+                </label>
+                <button class="primary-action" type="submit">Run serving estimate</button>
+                <p id="submit-status" role="status" aria-live="polite"></p>
+              </div>
+            </form>
+          </section>
+        </aside>
+
+        <div class="output-column">
+          <section id="preflight-panel" class="guide-panel" aria-labelledby="preflight-heading">
+            <p class="panel-kicker">02 / Read the output</p>
+            <h2 id="preflight-heading">A focused comparison, not a black box.</h2>
+            <p>Each completed run keeps the result contract visible so you can explain why a configuration ranked where it did.</p>
+            <ol class="guide-list">
+              <li><div><strong>Watch the run state</strong><span>Queued and running states stay visible while the real CLI executes.</span></div></li>
+              <li><div><strong>Compare the frontier</strong><span>Use throughput, latency, SLA status, and the Pareto view together.</span></div></li>
+              <li><div><strong>Download the artifact</strong><span>Deployment files remain local and ephemeral for this controlled demo.</span></div></li>
+            </ol>
+          </section>
+
+          <section id="results-panel" class="panel" hidden aria-labelledby="results-heading">
+            <div class="section-heading">
+              <div>
+                <p class="panel-kicker">03 / Ranked output</p>
+                <h2 id="results-heading">Ranked configurations</h2>
+              </div>
+              <p>Compare the estimates before validating them on the target stack.</p>
+            </div>
+            <p class="estimate-note" id="results-estimate-warning"><strong>Estimate warning:</strong> predictions must be validated with representative real benchmarks before deployment.</p>
+        <div class="table-wrap">
+          <table id="results-table">
+            <caption class="visually-hidden">AIConfigurator ranked serving configuration estimates</caption>
+            <thead>
+              <tr>
+                <th scope="col">Rank</th>
+                <th scope="col">Mode</th>
+                <th scope="col">Backend / system</th>
+                <th scope="col">GPUs</th>
+                <th scope="col">Throughput (tokens/s)</th>
+                <th scope="col">Request latency (ms)</th>
+                <th scope="col">TTFT (ms)</th>
+                <th scope="col">TPOT (ms)</th>
+                <th scope="col">SLA</th>
+              </tr>
+            </thead>
+            <tbody id="results-body"></tbody>
+          </table>
+        </div>
+        <section id="pareto-panel" hidden aria-labelledby="pareto-heading">
+          <div class="section-heading">
+            <div>
+              <p class="panel-kicker">Trade-off surface</p>
+              <h2 id="pareto-heading">Pareto frontier</h2>
+            </div>
+          </div>
+          <p>Throughput vs. request latency: points on the frontier have no other candidate that is both faster and higher-throughput.</p>
+          <ul class="pareto-legend" aria-label="Chart legend">
+            <li><span class="pareto-swatch frontier" aria-hidden="true"></span> Pareto frontier</li>
+            <li><span class="pareto-swatch dominated" aria-hidden="true"></span> Dominated candidate</li>
+          </ul>
+          <div class="pareto-wrap">
+            <svg id="pareto-chart" viewBox="0 0 760 420" role="img" aria-labelledby="pareto-chart-title pareto-chart-description">
+              <title id="pareto-chart-title">Throughput versus request latency</title>
+              <desc id="pareto-chart-description">The chart will appear when a run completes.</desc>
+            </svg>
+          </div>
+          <p id="pareto-summary" role="status"></p>
+          <ul id="pareto-frontier-list"></ul>
+        </section>
+        <section id="comparison-panel" hidden aria-labelledby="comparison-heading">
+          <div class="section-heading">
+            <div>
+              <p class="panel-kicker">Mode comparison</p>
+              <h2 id="comparison-heading">Aggregate vs. disaggregated</h2>
+            </div>
+          </div>
+          <p>These summaries compare only candidates that meet both requested targets. They are model-based estimates, not a deployment recommendation.</p>
+          <div class="comparison-grid">
+            <article class="comparison-card" id="agg-comparison-card">
+              <h3>Aggregate (<code>agg</code>)</h3>
+              <dl class="comparison-stats">
+                <div class="comparison-stat"><dt>Candidates</dt><dd id="agg-comparison-count">—</dd></div>
+                <div class="comparison-stat"><dt>Meets SLA</dt><dd id="agg-comparison-feasible">—</dd></div>
+                <div class="comparison-stat"><dt>Best SLA throughput</dt><dd id="agg-comparison-throughput">—</dd></div>
+                <div class="comparison-stat"><dt>Lowest SLA latency</dt><dd id="agg-comparison-latency">—</dd></div>
+              </dl>
+              <p class="comparison-status" id="agg-comparison-status" role="status"></p>
+            </article>
+            <article class="comparison-card" id="disagg-comparison-card">
+              <h3>Disaggregated (<code>disagg</code>)</h3>
+              <dl class="comparison-stats">
+                <div class="comparison-stat"><dt>Candidates</dt><dd id="disagg-comparison-count">—</dd></div>
+                <div class="comparison-stat"><dt>Meets SLA</dt><dd id="disagg-comparison-feasible">—</dd></div>
+                <div class="comparison-stat"><dt>Best SLA throughput</dt><dd id="disagg-comparison-throughput">—</dd></div>
+                <div class="comparison-stat"><dt>Lowest SLA latency</dt><dd id="disagg-comparison-latency">—</dd></div>
+              </dl>
+              <p class="comparison-status" id="disagg-comparison-status" role="status"></p>
+            </article>
+          </div>
+          <p id="comparison-summary" role="status"></p>
+        </section>
+        <div id="artifacts-panel">
+          <h3>Deployment artifacts</h3>
+          <div class="artifact-actions">
+            <a id="artifact-bundle" class="artifact-bundle" hidden>Download all artifacts</a>
+          </div>
+          <ul id="artifact-list" class="artifact-list"></ul>
+        </div>
+      </section>
+        </div>
+      </div>
+
+      <section id="history-panel" class="panel" aria-labelledby="history-heading">
+        <div class="section-heading">
+          <div>
+            <p class="panel-kicker">Recent context</p>
+            <h2 id="history-heading">Recent local history</h2>
+          </div>
+          <p>Useful for this process only; it is not durable storage.</p>
+        </div>
+        <p>Recent completed and failed runs are kept in this process only. A restart clears this history; artifact links can also expire after the 24-hour local retention window.</p>
+        <p id="history-status" role="status" aria-live="polite">Loading recent runs…</p>
+        <div class="table-wrap">
+          <table id="history-table" hidden>
+            <caption class="visually-hidden">Recent local serving configuration runs</caption>
+            <thead>
+              <tr>
+                <th scope="col">Status</th>
+                <th scope="col">Model / system</th>
+                <th scope="col">Constraints</th>
+                <th scope="col">Created</th>
+                <th scope="col">Artifacts</th>
+                <th scope="col">Action</th>
+              </tr>
+            </thead>
+            <tbody id="history-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <script>
+      const form = document.querySelector("#run-form");
+      const status = document.querySelector("#submit-status");
+      const submitButton = form.querySelector("button");
+      const modelSelect = document.querySelector("#model");
+      const systemSelect = document.querySelector("#system");
+      const supportStatus = document.querySelector("#support-status");
+      const historyStatus = document.querySelector("#history-status");
+      const historyTable = document.querySelector("#history-table");
+      const historyBody = document.querySelector("#history-body");
+      const resultsPanel = document.querySelector("#results-panel");
+      const resultsBody = document.querySelector("#results-body");
+      const artifactBundle = document.querySelector("#artifact-bundle");
+      const artifactList = document.querySelector("#artifact-list");
+      const paretoPanel = document.querySelector("#pareto-panel");
+      const paretoChart = document.querySelector("#pareto-chart");
+      const paretoSummary = document.querySelector("#pareto-summary");
+      const paretoFrontierList = document.querySelector("#pareto-frontier-list");
+      const comparisonPanel = document.querySelector("#comparison-panel");
+      const comparisonSummary = document.querySelector("#comparison-summary");
+      const POLL_INTERVAL_MS = 2000;
+      let pollTimer = null;
+      let pollGeneration = 0;
+      let supportPairs = [];
+
+      function setStatus(message, state, busy) {
+        status.textContent = message;
+        status.dataset.state = state;
+        status.setAttribute("aria-busy", String(busy));
+      }
+
+      function cancelPolling() {
+        if (pollTimer !== null) {
+          window.clearTimeout(pollTimer);
+          pollTimer = null;
+        }
+        pollGeneration += 1;
+      }
+
+      function appendCell(row, value) {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.append(cell);
+        return cell;
+      }
+
+      function formatMetric(value) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) {
+          return "—";
+        }
+        return number.toLocaleString(undefined, { maximumFractionDigits: 2 });
+      }
+
+      function formatTimestamp(value) {
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+      }
+
+      function replaceSelectOptions(select, values, selectedValue) {
+        select.replaceChildren();
+        for (const value of values) {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = value;
+          select.append(option);
+        }
+        if (values.includes(selectedValue)) {
+          select.value = selectedValue;
+        } else if (values.length > 0) {
+          select.value = values[0];
+        }
+      }
+
+      function updateSystemOptions(preferredSystem = systemSelect.value) {
+        const systems = [...new Set(
+          supportPairs
+            .filter((pair) => pair.model === modelSelect.value)
+            .map((pair) => pair.system)
+        )].sort();
+        replaceSelectOptions(systemSelect, systems, preferredSystem);
+        systemSelect.disabled = systems.length === 0;
+      }
+
+      async function loadSupportMatrix() {
+        try {
+          const response = await fetch("/api/support");
+          const body = await response.json();
+          if (!response.ok || !Array.isArray(body.models) || !Array.isArray(body.pairs)) {
+            throw new Error("The support matrix could not be loaded.");
+          }
+          supportPairs = body.pairs.filter((pair) =>
+            typeof pair.model === "string" && typeof pair.system === "string"
+          );
+          const selectedModel = modelSelect.value;
+          const selectedSystem = systemSelect.value;
+          replaceSelectOptions(modelSelect, body.models, selectedModel);
+          updateSystemOptions(selectedSystem);
+          const version = body.aiconfigurator_version
+            ? ` AIConfigurator ${body.aiconfigurator_version}.`
+            : "";
+          supportStatus.textContent = `${body.models.length} models and ${body.systems.length} GPU systems available for ${body.backend || "the default backend"}.${version}`;
+        } catch (error) {
+          supportStatus.textContent = "Support matrix unavailable; the default model and GPU system remain selectable.";
+        }
+      }
+
+      function isParetoDominated(candidate, candidates) {
+        return candidates.some((other) => {
+          if (other === candidate) {
+            return false;
+          }
+          const atLeastAsFast = other.predicted_request_latency_ms <= candidate.predicted_request_latency_ms;
+          const atLeastAsMuchThroughput = other.predicted_tokens_per_second >= candidate.predicted_tokens_per_second;
+          const strictlyBetter = other.predicted_request_latency_ms < candidate.predicted_request_latency_ms ||
+            other.predicted_tokens_per_second > candidate.predicted_tokens_per_second;
+          return atLeastAsFast && atLeastAsMuchThroughput && strictlyBetter;
+        });
+      }
+
+      function chartMetricRange(values) {
+        const minimum = Math.min(...values);
+        const maximum = Math.max(...values);
+        if (minimum === maximum) {
+          const padding = Math.max(Math.abs(minimum) * 0.1, 1);
+          return [Math.max(0, minimum - padding), maximum + padding];
+        }
+        const padding = (maximum - minimum) * 0.08;
+        return [Math.max(0, minimum - padding), maximum + padding];
+      }
+
+      function createSvgElement(name, attributes = {}) {
+        const element = document.createElementNS("http://www.w3.org/2000/svg", name);
+        for (const [attribute, value] of Object.entries(attributes)) {
+          element.setAttribute(attribute, String(value));
+        }
+        return element;
+      }
+
+      function renderParetoChart(results) {
+        const candidates = results.candidates.filter((candidate) => {
+          return Number.isFinite(Number(candidate.predicted_tokens_per_second)) &&
+            Number.isFinite(Number(candidate.predicted_request_latency_ms));
+        });
+        if (candidates.length === 0) {
+          throw new Error("The run returned no plottable configurations.");
+        }
+
+        const frontier = candidates
+          .filter((candidate) => !isParetoDominated(candidate, candidates))
+          .sort((left, right) => left.predicted_request_latency_ms - right.predicted_request_latency_ms);
+        const latencies = candidates.map((candidate) => candidate.predicted_request_latency_ms);
+        const throughputs = candidates.map((candidate) => candidate.predicted_tokens_per_second);
+        const [latencyMin, latencyMax] = chartMetricRange(latencies);
+        const [throughputMin, throughputMax] = chartMetricRange(throughputs);
+        const width = 760;
+        const height = 420;
+        const margin = { top: 24, right: 24, bottom: 58, left: 72 };
+        const plotWidth = width - margin.left - margin.right;
+        const plotHeight = height - margin.top - margin.bottom;
+        const xScale = (value) => margin.left +
+          ((value - latencyMin) / (latencyMax - latencyMin)) * plotWidth;
+        const yScale = (value) => height - margin.bottom -
+          ((value - throughputMin) / (throughputMax - throughputMin)) * plotHeight;
+
+        paretoChart.replaceChildren();
+        const title = createSvgElement("title", { id: "pareto-chart-title" });
+        title.textContent = "Throughput versus request latency";
+        paretoChart.append(title);
+        const description = createSvgElement("desc", { id: "pareto-chart-description" });
+        description.textContent = `${frontier.length} of ${candidates.length} candidates are on the Pareto frontier.`;
+        paretoChart.append(description);
+
+        for (let tick = 0; tick <= 4; tick += 1) {
+          const ratio = tick / 4;
+          const y = height - margin.bottom - ratio * plotHeight;
+          const throughput = throughputMin + ratio * (throughputMax - throughputMin);
+          paretoChart.append(createSvgElement("line", {
+            class: "pareto-grid",
+            x1: margin.left,
+            x2: width - margin.right,
+            y1: y,
+            y2: y
+          }));
+          const yLabel = createSvgElement("text", {
+            class: "pareto-tick-label",
+            "text-anchor": "end",
+            x: margin.left - 8,
+            y: y + 4
+          });
+          yLabel.textContent = formatMetric(throughput);
+          paretoChart.append(yLabel);
+
+          const x = margin.left + ratio * plotWidth;
+          const latency = latencyMin + ratio * (latencyMax - latencyMin);
+          paretoChart.append(createSvgElement("line", {
+            class: "pareto-grid",
+            x1: x,
+            x2: x,
+            y1: margin.top,
+            y2: height - margin.bottom
+          }));
+          const xLabel = createSvgElement("text", {
+            class: "pareto-tick-label",
+            "text-anchor": "middle",
+            x: x,
+            y: height - margin.bottom + 22
+          });
+          xLabel.textContent = formatMetric(latency);
+          paretoChart.append(xLabel);
+        }
+
+        paretoChart.append(createSvgElement("line", {
+          class: "pareto-axis",
+          x1: margin.left,
+          x2: width - margin.right,
+          y1: height - margin.bottom,
+          y2: height - margin.bottom
+        }));
+        paretoChart.append(createSvgElement("line", {
+          class: "pareto-axis",
+          x1: margin.left,
+          x2: margin.left,
+          y1: margin.top,
+          y2: height - margin.bottom
+        }));
+        const xAxisLabel = createSvgElement("text", {
+          class: "pareto-axis-label",
+          "text-anchor": "middle",
+          x: margin.left + plotWidth / 2,
+          y: height - 10
+        });
+        xAxisLabel.textContent = "Request latency (ms) — lower is better";
+        paretoChart.append(xAxisLabel);
+        const yAxisLabel = createSvgElement("text", {
+          class: "pareto-axis-label",
+          "text-anchor": "middle",
+          transform: `translate(16 ${margin.top + plotHeight / 2}) rotate(-90)`
+        });
+        yAxisLabel.textContent = "Throughput (tokens/s) — higher is better";
+        paretoChart.append(yAxisLabel);
+
+        if (frontier.length > 1) {
+          paretoChart.append(createSvgElement("polyline", {
+            class: "pareto-frontier-path",
+            points: frontier.map((candidate) => `${xScale(candidate.predicted_request_latency_ms)},${yScale(candidate.predicted_tokens_per_second)}`).join(" ")
+          }));
+        }
+
+        for (const candidate of candidates) {
+          const onFrontier = frontier.includes(candidate);
+          const point = createSvgElement("circle", {
+            class: onFrontier ? "pareto-frontier-point" : "pareto-dominated-point",
+            cx: xScale(candidate.predicted_request_latency_ms),
+            cy: yScale(candidate.predicted_tokens_per_second),
+            r: 6,
+            tabindex: 0,
+            role: "img",
+            "aria-label": `Rank ${candidate.rank}: ${formatMetric(candidate.predicted_tokens_per_second)} tokens/s, ${formatMetric(candidate.predicted_request_latency_ms)} ms request latency`
+          });
+          const pointTitle = createSvgElement("title");
+          pointTitle.textContent = `Rank ${candidate.rank} · ${candidate.mode} · ${formatMetric(candidate.predicted_tokens_per_second)} tokens/s · ${formatMetric(candidate.predicted_request_latency_ms)} ms`;
+          point.append(pointTitle);
+          paretoChart.append(point);
+        }
+
+        paretoSummary.textContent = `${frontier.length} of ${candidates.length} plotted candidates are on the Pareto frontier.`;
+        paretoFrontierList.replaceChildren();
+        for (const candidate of frontier) {
+          const item = document.createElement("li");
+          item.textContent = `Rank ${candidate.rank} (${candidate.mode}): ${formatMetric(candidate.predicted_tokens_per_second)} tokens/s at ${formatMetric(candidate.predicted_request_latency_ms)} ms request latency.`;
+          paretoFrontierList.append(item);
+        }
+        paretoPanel.hidden = false;
+      }
+
+      function modeDisplayName(mode) {
+        return mode === "agg" ? "Aggregate" : "Disaggregated";
+      }
+
+      function renderModeCard(mode, allCandidates) {
+        const candidates = allCandidates.filter((candidate) => candidate.mode === mode);
+        const feasible = candidates.filter((candidate) => candidate.meets_sla === true &&
+          Number.isFinite(Number(candidate.predicted_tokens_per_second)) &&
+          Number.isFinite(Number(candidate.predicted_request_latency_ms)));
+        const countElement = document.querySelector(`#${mode}-comparison-count`);
+        const feasibleElement = document.querySelector(`#${mode}-comparison-feasible`);
+        const throughputElement = document.querySelector(`#${mode}-comparison-throughput`);
+        const latencyElement = document.querySelector(`#${mode}-comparison-latency`);
+        const statusElement = document.querySelector(`#${mode}-comparison-status`);
+        countElement.textContent = String(candidates.length || "Not reported");
+        feasibleElement.textContent = String(feasible.length);
+
+        if (feasible.length === 0) {
+          throughputElement.textContent = "No SLA-feasible candidates";
+          latencyElement.textContent = "No SLA-feasible candidates";
+          statusElement.textContent = candidates.length === 0
+            ? `This run did not return ${modeDisplayName(mode).toLowerCase()} candidates.`
+            : `No ${modeDisplayName(mode).toLowerCase()} candidate meets both requested targets.`;
+          return { mode, candidates, feasible, bestThroughput: null, bestLatency: null };
+        }
+
+        const bestThroughput = feasible.reduce((best, candidate) => {
+          return Number(candidate.predicted_tokens_per_second) > Number(best.predicted_tokens_per_second)
+            ? candidate
+            : best;
+        });
+        const bestLatency = feasible.reduce((best, candidate) => {
+          return Number(candidate.predicted_request_latency_ms) < Number(best.predicted_request_latency_ms)
+            ? candidate
+            : best;
+        });
+        throughputElement.textContent = `${formatMetric(bestThroughput.predicted_tokens_per_second)} tokens/s`;
+        latencyElement.textContent = `${formatMetric(bestLatency.predicted_request_latency_ms)} ms`;
+        statusElement.textContent = `${feasible.length} of ${candidates.length} candidates meet both requested targets.`;
+        return { mode, candidates, feasible, bestThroughput, bestLatency };
+      }
+
+      function renderModeComparison(results) {
+        const allCandidates = Array.isArray(results.candidates) ? results.candidates : [];
+        const summaries = [
+          renderModeCard("agg", allCandidates),
+          renderModeCard("disagg", allCandidates)
+        ];
+        const available = summaries.filter((summary) => summary.candidates.length > 0);
+        const feasible = summaries.filter((summary) => summary.feasible.length > 0);
+        if (available.length < 2) {
+          comparisonSummary.textContent = "Comparison is incomplete because only one result mode was returned.";
+        } else if (feasible.length === 0) {
+          comparisonSummary.textContent = "Neither result mode returned an SLA-feasible candidate; validate the estimates with real benchmarks.";
+        } else if (feasible.length === 1) {
+          comparisonSummary.textContent = `${modeDisplayName(feasible[0].mode)} is the only mode with an SLA-feasible candidate; validate the estimate with a real benchmark.`;
+        } else {
+          const [aggregate, disaggregated] = summaries;
+          const throughputWinner = Number(aggregate.bestThroughput.predicted_tokens_per_second) >= Number(disaggregated.bestThroughput.predicted_tokens_per_second)
+            ? aggregate
+            : disaggregated;
+          const latencyWinner = Number(aggregate.bestLatency.predicted_request_latency_ms) <= Number(disaggregated.bestLatency.predicted_request_latency_ms)
+            ? aggregate
+            : disaggregated;
+          comparisonSummary.textContent = `Among SLA-feasible candidates, ${modeDisplayName(throughputWinner.mode).toLowerCase()} has the higher predicted throughput (${formatMetric(throughputWinner.bestThroughput.predicted_tokens_per_second)} tokens/s), while ${modeDisplayName(latencyWinner.mode).toLowerCase()} has the lower predicted request latency (${formatMetric(latencyWinner.bestLatency.predicted_request_latency_ms)} ms). Validate both estimates with a real benchmark.`;
+        }
+        comparisonPanel.hidden = false;
+      }
+
+      function artifactHref(runId, artifact) {
+        if (
+          typeof artifact !== "string" ||
+          artifact.length === 0 ||
+          artifact.split("/").some((part) => !part || part === "." || part === "..")
+        ) {
+          throw new Error("The run returned an invalid artifact name.");
+        }
+        const encodedPath = artifact.split("/").map(encodeURIComponent).join("/");
+        return `/api/runs/${encodeURIComponent(runId)}/artifacts/${encodedPath}`;
+      }
+
+      function bundleHref(runId) {
+        if (typeof runId !== "string" || runId.length === 0) {
+          throw new Error("The run returned an invalid identifier.");
+        }
+        return `/api/runs/${encodeURIComponent(runId)}/artifacts.zip`;
+      }
+
+      function clearResults() {
+        resultsPanel.hidden = true;
+        paretoPanel.hidden = true;
+        resultsBody.replaceChildren();
+        paretoChart.replaceChildren();
+        paretoFrontierList.replaceChildren();
+        comparisonPanel.hidden = true;
+        comparisonSummary.replaceChildren();
+        artifactBundle.hidden = true;
+        artifactBundle.removeAttribute("href");
+        artifactBundle.removeAttribute("download");
+        artifactList.replaceChildren();
+      }
+
+      function renderResults(runId, results, artifacts, artifactsAvailable = true) {
+        if (!results || !Array.isArray(results.candidates) || results.candidates.length === 0) {
+          throw new Error("The run returned no ranked configurations.");
+        }
+
+        resultsBody.replaceChildren();
+        for (const candidate of results.candidates) {
+          const row = document.createElement("tr");
+          appendCell(row, String(candidate.rank));
+          appendCell(row, candidate.mode);
+          appendCell(row, `${candidate.backend} / ${candidate.system}`);
+          appendCell(row, String(candidate.total_gpus));
+          appendCell(row, formatMetric(candidate.predicted_tokens_per_second));
+          appendCell(row, formatMetric(candidate.predicted_request_latency_ms));
+          appendCell(row, formatMetric(candidate.predicted_ttft_ms));
+          appendCell(row, formatMetric(candidate.predicted_tpot_ms));
+          const slaCell = appendCell(row, candidate.meets_sla ? "Meets SLA" : "Outside SLA");
+          slaCell.className = candidate.meets_sla ? "sla-pass" : "sla-fail";
+          resultsBody.append(row);
+        }
+        renderParetoChart(results);
+        renderModeComparison(results);
+
+        artifactList.replaceChildren();
+        const artifactNames = Array.isArray(artifacts) ? artifacts : [];
+        for (const artifact of artifactNames) {
+          const item = document.createElement("li");
+          const link = document.createElement("a");
+          link.href = artifactHref(runId, artifact);
+          link.textContent = artifact;
+          link.download = artifact.substring(artifact.lastIndexOf("/") + 1);
+          item.append(link);
+          artifactList.append(item);
+        }
+        if (artifactNames.length > 0 && artifactsAvailable) {
+          artifactBundle.href = bundleHref(runId);
+          artifactBundle.download = `aiconfigurator-run-${runId}-artifacts.zip`;
+          artifactBundle.hidden = false;
+        } else {
+          artifactBundle.hidden = true;
+          artifactBundle.removeAttribute("href");
+          artifactBundle.removeAttribute("download");
+        }
+        if (artifactList.children.length === 0) {
+          const item = document.createElement("li");
+          item.textContent = "No deployment artifacts were returned.";
+          artifactList.append(item);
+        }
+        resultsPanel.hidden = false;
+      }
+
+      function loadHistoryItem(item) {
+        cancelPolling();
+        if (item.status === "completed") {
+          try {
+            clearResults();
+            renderResults(
+              item.id,
+              item.results,
+              item.artifacts,
+              !item.artifacts_unavailable
+            );
+            if (item.artifacts_unavailable) {
+              const notice = document.createElement("li");
+              notice.className = "history-unavailable";
+              notice.textContent = "Some artifacts are unavailable because local retention expired.";
+              artifactList.prepend(notice);
+            }
+            setStatus(`Loaded historical run ${item.id}.`, "completed", false);
+          } catch (error) {
+            setStatus(error.message, "error", false);
+          }
+          submitButton.disabled = false;
+          return;
+        }
+        clearResults();
+        setStatus(
+          `Historical run ${item.id} failed: ${item.error || "unknown error"}`,
+          "error",
+          false
+        );
+        submitButton.disabled = false;
+      }
+
+      function renderHistory(items) {
+        historyBody.replaceChildren();
+        if (!Array.isArray(items) || items.length === 0) {
+          historyTable.hidden = true;
+          historyStatus.textContent = "No recent local runs.";
+          return;
+        }
+
+        for (const item of items) {
+          const row = document.createElement("tr");
+          const statusCell = appendCell(row, item.status);
+          if (item.status === "failed") {
+            statusCell.className = "history-failed";
+          }
+          const request = item.request || {};
+          appendCell(row, `${request.model || "Unknown model"} / ${request.system || "Unknown system"}`);
+          appendCell(row, `${formatMetric(request.total_gpus)} GPUs · TTFT ${formatMetric(request.ttft)} ms · TPOT ${formatMetric(request.tpot)} ms`);
+          appendCell(row, formatTimestamp(item.created_at));
+          const artifactCell = appendCell(row, Array.isArray(item.artifacts) && item.artifacts.length > 0
+            ? `${item.artifacts.length} available`
+            : item.artifacts_unavailable ? "Unavailable (expired)" : "None");
+          if (item.artifacts_unavailable) {
+            artifactCell.className = "history-unavailable";
+          }
+          const actionCell = document.createElement("td");
+          const action = document.createElement("button");
+          action.type = "button";
+          action.textContent = item.status === "completed" ? "View results" : "View failure";
+          action.addEventListener("click", () => loadHistoryItem(item));
+          actionCell.append(action);
+          row.append(actionCell);
+          historyBody.append(row);
+        }
+        historyTable.hidden = false;
+        historyStatus.textContent = `${items.length} recent local run${items.length === 1 ? "" : "s"}.`;
+      }
+
+      async function loadHistory() {
+        try {
+          const response = await fetch("/api/runs");
+          const body = await response.json();
+          if (!response.ok) {
+            throw new Error(body.detail || "Recent run history could not be loaded.");
+          }
+          renderHistory(body);
+        } catch (error) {
+          historyTable.hidden = true;
+          historyStatus.textContent = error.message;
+        }
+      }
+
+      async function pollRun(runId, generation) {
+        if (generation !== pollGeneration) {
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/runs/${encodeURIComponent(runId)}`);
+          let body;
+          try {
+            body = await response.json();
+          } catch {
+            throw new Error("The server returned an invalid status response.");
+          }
+          if (!response.ok) {
+            throw new Error(body.detail || "The run status could not be loaded.");
+          }
+          if (generation !== pollGeneration) {
+            return;
+          }
+
+          if (body.status === "queued" || body.status === "running") {
+            setStatus(`Run ${runId} is ${body.status}.`, "loading", true);
+            pollTimer = window.setTimeout(
+              () => pollRun(runId, generation),
+              POLL_INTERVAL_MS
+            );
+            return;
+          }
+          if (body.status === "completed") {
+            renderResults(runId, body.results, body.artifacts);
+            setStatus(`Run ${runId} completed. Results are ready.`, "completed", false);
+            submitButton.disabled = false;
+            loadHistory();
+            return;
+          }
+          if (body.status === "failed") {
+            setStatus(
+              `Run ${runId} failed: ${body.error || "unknown error"}`,
+              "error",
+              false
+            );
+            submitButton.disabled = false;
+            loadHistory();
+            return;
+          }
+          throw new Error("The run returned an unknown status.");
+        } catch (error) {
+          if (generation !== pollGeneration) {
+            return;
+          }
+          setStatus(error.message, "error", false);
+          submitButton.disabled = false;
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        cancelPolling();
+        clearResults();
+        const values = Object.fromEntries(new FormData(form));
+        values.total_gpus = Number(values.total_gpus);
+        values.ttft = Number(values.ttft);
+        values.tpot = Number(values.tpot);
+        submitButton.disabled = true;
+        setStatus("Submitting run…", "loading", true);
+
+        try {
+          const response = await fetch(form.dataset.endpoint, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(values)
+          });
+          const body = await response.json();
+          if (!response.ok) {
+            throw new Error(body.detail || "The run could not be submitted.");
+          }
+          setStatus(`Run ${body.id} is ${body.status}.`, "loading", true);
+          const generation = pollGeneration;
+          pollRun(body.id, generation);
+        } catch (error) {
+          submitButton.disabled = false;
+          setStatus(error.message, "error", false);
+        }
+      });
+
+      modelSelect.addEventListener("change", () => updateSystemOptions());
+      loadSupportMatrix();
+      loadHistory();
+    </script>
+  </body>
+</html>

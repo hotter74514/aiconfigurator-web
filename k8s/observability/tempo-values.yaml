@@ -1,0 +1,49 @@
+tempo:
+  reportingEnabled: false
+  memBallastSizeMbs: 0
+  retention: 24h
+  # Keep local correlation searches bounded so they cannot starve the HTTP
+  # health endpoint on the single-node Minikube cluster.
+  querier:
+    max_concurrent_queries: 4
+  queryFrontend:
+    search:
+      concurrent_jobs: 8
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  # A listening TCP port is a process-level liveness signal. The /ready
+  # endpoint remains readiness-only so temporary query pressure cannot cause
+  # kubelet to restart a healthy Tempo process.
+  livenessProbe:
+    httpGet: null
+    tcpSocket:
+      port: 3200
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: 3200
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 10
+    failureThreshold: 6
+    successThreshold: 1
+
+persistence:
+  enabled: false
+
+service:
+  type: ClusterIP
+
+serviceMonitor:
+  enabled: false

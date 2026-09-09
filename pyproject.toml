@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aiconfigurator-portal"
+version = "0.1.0"
+description = "Serving Configuration Portal over NVIDIA Dynamo AIConfigurator"
+requires-python = ">=3.11"
+dependencies = [
+  "anyio>=3.6,<4",
+  "fastapi>=0.115,<0.116",
+  "jinja2>=3.1,<4",
+  "opentelemetry-api>=1.44,<1.45",
+  "opentelemetry-exporter-otlp-proto-http>=1.44,<1.45",
+  "opentelemetry-exporter-prometheus>=0.65b0,<0.66",
+  "opentelemetry-instrumentation-fastapi>=0.65b0,<0.66",
+  "opentelemetry-sdk>=1.44,<1.45",
+  "prometheus-client>=0.22,<1",
+  "uvicorn[standard]>=0.34,<1",
+]
+
+[project.optional-dependencies]
+test = [
+  "httpx>=0.27,<0.28",
+  "pytest>=8.3,<9",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

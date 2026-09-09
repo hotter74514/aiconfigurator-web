@@ -1,0 +1,271 @@
+from collections.abc import MutableMapping
+from dataclasses import dataclass
+import os
+from threading import Lock
+from typing import Any
+
+from opentelemetry import metrics, trace
+from opentelemetry.context import Context
+from opentelemetry.exporter.otlp.proto.http.metric_exporter import (
+    OTLPMetricExporter,
+)
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+    OTLPSpanExporter,
+)
+from opentelemetry.exporter.prometheus import PrometheusMetricReader
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.metrics.view import ExplicitBucketHistogramAggregation, View
+from opentelemetry.trace import Span, format_trace_id
+from prometheus_client import Histogram
+
+
+# Keep additional resolution around the normal ~10-second query duration.
+# The default prometheus_client buckets stop at 10 seconds before jumping to
+# +Inf, which makes quantiles for completed runs above that threshold coarse.
+_RUN_DURATION_BUCKETS = (
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.075,
+    0.1,
+    0.25,
+    0.5,
+    0.75,
+    1.0,
+    2.5,
+    5.0,
+    7.5,
+    10.0,
+    12.5,
+    15.0,
+    20.0,
+    30.0,
+    60.0,
+)
+
+
+_TRACE_RUN_DURATION = Histogram(
+    "portal_trace_run_duration_seconds",
+    "Completed Portal run duration with a trace exemplar",
+    labelnames=("status",),
+    buckets=_RUN_DURATION_BUCKETS,
+)
+
+TRACEPARENT_ENV = "TRACEPARENT"
+TRACESTATE_ENV = "TRACESTATE"
+_OTEL_TRACE_KEYS = ("traceparent", "tracestate")
+
+
+@dataclass(frozen=True)
+class TelemetryProviders:
+    tracer_provider: TracerProvider
+    meter_provider: MeterProvider
+
+
+class PortalTelemetry:
+    """Application telemetry instruments with one process-wide provider pair."""
+
+    def __init__(self, providers: TelemetryProviders) -> None:
+        self.providers = providers
+        self.tracer = providers.tracer_provider.get_tracer("aiconfigurator.portal")
+        meter = providers.meter_provider.get_meter("aiconfigurator.portal")
+
+        self.runs_total = meter.create_counter(
+            "portal.runs",
+            unit="{run}",
+            description="Terminal portal runs by status",
+        )
+        self.active_runs = meter.create_up_down_counter(
+            "portal.runs.active",
+            unit="{run}",
+            description="Currently executing portal runs",
+        )
+        self.queued_runs = meter.create_up_down_counter(
+            "portal.queue.depth",
+            unit="{run}",
+            description="Currently queued portal runs",
+        )
+        self.run_duration = meter.create_histogram(
+            "portal.run.duration",
+            unit="s",
+            description="Portal run duration",
+        )
+        self.subprocess_outcomes = meter.create_counter(
+            "portal.subprocess.outcomes",
+            unit="{subprocess}",
+            description="AIConfigurator subprocess outcomes",
+        )
+        self.artifact_bytes = meter.create_counter(
+            "portal.artifact.bytes",
+            unit="By",
+            description="Bytes written to completed run artifacts",
+        )
+        self.cache_outcomes = meter.create_counter(
+            "portal.cache.outcomes",
+            unit="{outcome}",
+            description="Deterministic cache hits and misses",
+        )
+
+    def record_queue_state(
+        self,
+        span: Span | None,
+        *,
+        depth: int,
+        capacity: int,
+        event_name: str,
+    ) -> None:
+        attributes: dict[str, int | float] = {
+            "queue.depth": depth,
+            "queue.capacity": capacity,
+            "queue.saturation_ratio": depth / capacity,
+        }
+        if span is not None and span.is_recording():
+            span.add_event(event_name, attributes=attributes)
+            for name, value in attributes.items():
+                span.set_attribute(name, value)
+
+    def record_terminal_run(
+        self,
+        status: str,
+        *,
+        duration_ms: int | None,
+        active: bool,
+        context: Context | None = None,
+    ) -> None:
+        self.runs_total.add(1, {"status": status})
+        if active:
+            self.active_runs.add(-1)
+        if duration_ms is not None:
+            duration_seconds = duration_ms / 1000
+            self.run_duration.record(duration_seconds)
+            _TRACE_RUN_DURATION.labels(status=status).observe(
+                duration_seconds,
+                exemplar=_trace_exemplar(context),
+            )
+
+    def record_artifact_bytes(self, total_bytes: int) -> None:
+        if total_bytes > 0:
+            self.artifact_bytes.add(total_bytes)
+
+    def record_subprocess_outcome(self, outcome: str) -> None:
+        self.subprocess_outcomes.add(1, {"outcome": outcome})
+
+    def record_cache_outcome(self, outcome: str) -> None:
+        self.cache_outcomes.add(1, {"outcome": outcome})
+
+    def force_flush(self) -> None:
+        self.providers.tracer_provider.force_flush()
+        self.providers.meter_provider.force_flush()
+
+    def shutdown(self) -> None:
+        self.providers.tracer_provider.shutdown()
+        self.providers.meter_provider.shutdown()
+
+
+_telemetry: PortalTelemetry | None = None
+_telemetry_lock = Lock()
+
+
+def get_telemetry() -> PortalTelemetry:
+    global _telemetry
+    if _telemetry is not None:
+        return _telemetry
+    with _telemetry_lock:
+        if _telemetry is None:
+            _telemetry = _build_telemetry()
+    return _telemetry
+
+
+def _build_telemetry() -> PortalTelemetry:
+    resource = Resource.create(
+        {
+            SERVICE_NAME: os.getenv("OTEL_SERVICE_NAME", "aiconfigurator-portal")
+        }
+    )
+    tracer_provider = TracerProvider(resource=resource)
+    if _signal_uses_otlp("traces"):
+        tracer_provider.add_span_processor(
+            BatchSpanProcessor(OTLPSpanExporter())
+        )
+    trace.set_tracer_provider(tracer_provider)
+
+    prometheus_reader = PrometheusMetricReader()
+    metric_readers: list[Any] = [prometheus_reader]
+    if _signal_uses_otlp("metrics"):
+        metric_readers.append(
+            PeriodicExportingMetricReader(OTLPMetricExporter())
+        )
+    meter_provider = MeterProvider(
+        resource=resource,
+        metric_readers=metric_readers,
+        views=[
+            View(
+                instrument_name="portal.run.duration",
+                aggregation=ExplicitBucketHistogramAggregation(
+                    boundaries=_RUN_DURATION_BUCKETS
+                ),
+            )
+        ],
+    )
+    metrics.set_meter_provider(meter_provider)
+    return PortalTelemetry(
+        TelemetryProviders(
+            tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
+        )
+    )
+
+
+def inject_trace_context(environ: MutableMapping[str, str]) -> None:
+    """Copy the current W3C trace context into subprocess environment variables."""
+
+    carrier: dict[str, str] = {}
+    from opentelemetry import propagate
+
+    propagate.inject(carrier)
+    for key in _OTEL_TRACE_KEYS:
+        value = carrier.get(key)
+        if value:
+            environ[key.upper()] = value
+
+
+def extract_trace_context(environ: MutableMapping[str, str]):
+    """Extract W3C trace context from the portal wrapper's environment variables."""
+
+    from opentelemetry import propagate
+
+    carrier = {
+        key: environ[env_key]
+        for key, env_key in (
+            ("traceparent", TRACEPARENT_ENV),
+            ("tracestate", TRACESTATE_ENV),
+        )
+        if environ.get(env_key)
+    }
+    return propagate.extract(carrier)
+
+
+def _signal_uses_otlp(signal_name: str) -> bool:
+    endpoint = os.getenv(f"OTEL_EXPORTER_OTLP_{signal_name.upper()}_ENDPOINT")
+    base_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+    exporters = os.getenv(f"OTEL_{signal_name.upper()}_EXPORTER", "")
+    return bool(
+        endpoint
+        or base_endpoint
+        or "otlp" in {value.strip().lower() for value in exporters.split(",")}
+    )
+
+
+def _trace_exemplar(context: Context | None) -> dict[str, str] | None:
+    """Return a Prometheus exemplar for the active run trace, when sampled."""
+
+    span = trace.get_current_span(context)
+    span_context = span.get_span_context()
+    if not span_context.is_valid or not span_context.trace_flags.sampled:
+        return None
+    return {"trace_id": format_trace_id(span_context.trace_id)}

@@ -1,0 +1,42 @@
+alertmanager:
+  enabled: false
+
+kube-state-metrics:
+  enabled: false
+
+prometheus-node-exporter:
+  enabled: false
+
+prometheus-pushgateway:
+  enabled: false
+
+server:
+  persistentVolume:
+    enabled: false
+  # Prometheus must store exemplars before Grafana can link metric points to Tempo.
+  extraFlags:
+    - web.enable-lifecycle
+    - enable-feature=exemplar-storage
+  exemplars:
+    # Keep exemplar retention bounded for the local single-node cluster.
+    max_exemplars: 10000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  service:
+    type: ClusterIP
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+extraScrapeConfigs: |
+  - job_name: aiconfigurator-portal
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - aiconfigurator-portal.default.svc.cluster.local:8000

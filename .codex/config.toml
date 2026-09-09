@@ -1,0 +1,14 @@
+# Project-scoped Codex defaults. Codex applies this file only when the repository is trusted.
+# Keep production credentials and deployment access outside this project configuration.
+# Network access is for local dependency and container-image setup; do not use production endpoints.
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = true
+
+# Browser automation for local UI smoke tests and demo verification.
+# npx downloads the latest Playwright MCP package on first use.
+[mcp_servers.playwright]
+command = "npx"
+args = ["-y", "@playwright/mcp@latest"]
