@@ -57,6 +57,12 @@ feat: refresh serving decision portal UI
 
 The bullets must describe the actual changes in that commit; do not leave the body empty or rely on the subject alone.
 
+The blank line and bullet separators must be real newline characters in the
+commit message. Do not pass the two-character string `\n` as a substitute for
+a line break. Before handing off a commit, verify its rendered message with
+`git log -1 --format=fuller` (or inspect the raw message with
+`git cat-file -p HEAD`).
+
 ## Completion Gate
 
 Before handoff, run applicable formatter, linter, type checker, unit/integration tests, container/Kubernetes checks, `make check`, and `git diff --check`. Exercise the demo path: submit a run, poll status, inspect ranked results, download an artifact, and show probes/metrics. Report exact commands, results, changed files, assumptions, and known limitations.
